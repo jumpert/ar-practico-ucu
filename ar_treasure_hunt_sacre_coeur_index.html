@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR Treasure Hunt — Sacré Coeur</title>
+  <!-- A-Frame + AR.js (versiones compatibles) -->
+  <!-- AR.js 3.4.7 requiere A-Frame 1.6.0 según su documentación -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
+  <style>
+    :root{
+      --primary:#0ea5e9; /* sky-500 */
+      --accent:#10b981; /* emerald-500 */
+      --bg:#0b1020;
+      --text:#eef2ff;
+      --muted:#94a3b8;
+    }
+    html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Inter,"Helvetica Neue",Arial,sans-serif}
+
+    /* Loader mientras inicializa la cámara/AR.js */
+    .arjs-loader{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .arjs-loader div{color:#fff;font-size:1.25rem;text-align:center}
+
+    /* HUD (overlay) */
+    .hud{position:fixed;inset:0;pointer-events:none;z-index:9990}
+    .hud .topbar{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;color:var(--text)}
+    .card{backdrop-filter:blur(8px);background:rgba(11,16,32,.55);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;pointer-events:auto}
+    .title{font-weight:700;letter-spacing:.2px}
+    .muted{color:var(--muted);font-size:.85rem}
+
+    .progress{display:flex;gap:8px;align-items:center}
+    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;border:1px solid rgba(255,255,255,.12);font-size:.85rem;color:var(--text)}
+    .ok{color:#22c55e}
+    .pending{color:#fbbf24}
+
+    .timer{font-variant-numeric:tabular-nums}
+
+    .help{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;max-width:min(92vw,420px)}
+    .help p{margin:.25rem 0;color:var(--muted);line-height:1.2}
+
+    .footer{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;align-items:center}
+    .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;background:linear-gradient(135deg,var(--primary),#6366f1);color:white;font-weight:600;box-shadow:0 10px 20px rgba(2,132,199,.25);cursor:pointer}
+
+    /* Mensaje final */
+    .final{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:10000}
+    .final.show{display:flex}
+    .final .box{background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.7));border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:22px 20px;text-align:center;color:var(--text);width:min(92vw,560px)}
+    .final h2{margin:.2rem 0 .4rem 0;font-size:1.4rem}
+    .final .confetti{position:absolute;inset:0;pointer-events:none}
+
+    /* Mini instrucciones */
+    .howto{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .howto .tag{border:1px dashed rgba(255,255,255,.2);border-radius:10px;padding:4px 8px;color:#e2e8f0;font-size:.85rem}
+
+    /* Pequeño aviso móvil */
+    @media (max-width:500px){
+      .title{font-size:1rem}
+      .muted{font-size:.75rem}
+      .pill{font-size:.8rem}
+    }
+  </style>
+</head>
+<body>
+  <!-- Loader -->
+  <div class="arjs-loader" id="loader"><div>Inicializando cámara…<br>Si es la primera vez, acepta el permiso de cámara.</div></div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="topbar">
+      <div class="card" style="display:flex;gap:10px;align-items:center;">
+        <div>
+          <div class="title">Búsqueda del Tesoro — Sacré Coeur</div>
+          <div class="muted">Jugador/a: <span id="playerName">Invitado/a</span> · Progreso <span id="progressCount">0</span>/3</div>
+        </div>
+      </div>
+      <div class="progress card">
+        <span class="pill" id="status-m-hiro">Hiro <span class="dot pending">●</span></span>
+        <span class="pill" id="status-m-kanji">Kanji <span class="dot pending">●</span></span>
+        <span class="pill" id="status-m-bar5">Barcode 5 <span class="dot pending">●</span></span>
+        <span class="pill timer" id="timer">00:00</span>
+      </div>
+    </div>
+
+    <div class="help">
+      <div class="card">
+        <div class="howto">
+          <span class="tag">1) Imprime los marcadores</span>
+          <span class="tag">2) Abre este link bajo <strong>HTTPS</strong></span>
+          <span class="tag">3) Apunta con la cámara</span>
+        </div>
+        <p class="muted">Marcadores oficiales soportados: Hiro, Kanji y códigos <em>barcode</em> (p. ej. valor 5). Puedes reemplazar el <em>barcode</em> por un patrón propio <code>.patt</code> si lo prefieres.</p>
+        <button class="btn" id="btnStart" title="Habilitar audio y comenzar">Empezar</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="card muted">Tip: vibra y suena al encontrar una pista. Si no oyes sonido, pulsa “Empezar”.</div>
+    </div>
+  </div>
+
+  <!-- Mensaje final -->
+  <div class="final" id="final">
+    <canvas class="confetti" id="confetti"></canvas>
+    <div class="box">
+      <h2>🎉 ¡Tesoro encontrado! 🎉</h2>
+      <p>¡Excelente trabajo! Has descubierto todas las pistas en <strong id="finalTime">--:--</strong>.
+      <br>Vuelve al punto de inicio para registrar tu tiempo.
+      </p>
+      <button class="btn" onclick="document.getElementById('final').classList.remove('show')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Escena AR -->
+  <a-scene
+    vr-mode-ui="enabled:false"
+    renderer="logarithmicDepthBuffer:true"
+    embedded
+    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
+    id="scene">
+
+    <a-assets>
+      <!-- Modelo de ‘tesoro’ (trex de ejemplo) -->
+      <a-asset-item id="trex" src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/examples/image-tracking/nft/trex/scene.gltf"></a-asset-item>
+    </a-assets>
+
+    <!-- Marcador 1: HIRO -->
+    <a-marker id="m-hiro" preset="hiro">
+      <a-box position="0 0.5 0" depth="0.5" height="0.5" width="0.5" color="#f97316"
+             animation="property: rotation; to: 0 360 0; loop: true; dur: 3500; easing: linear"></a-box>
+      <a-text value="Pista 1: Inicio de la historia" position="-0.6 1 0" scale="0.5 0.5 0.5" color="#FFFFFF"></a-text>
+    </a-marker>
+
+    <!-- Marcador 2: KANJI -->
+    <a-marker id="m-kanji" preset="kanji">
+      <a-sphere position="0 0.5 0" radius="0.3" color="#3b82f6"
+                animation="property: position; dir: alternate; dur: 1200; easing: easeInOutSine; to: 0 1.1 0; loop: true"></a-sphere>
+      <a-text value="Pista 2: Sigue las escaleras…" position="-0.8 1 0" scale="0.5 0.5 0.5" color="#FFFFFF"></a-text>
+    </a-marker>
+
+    <!-- Marcador 3: BARCODE (valor 5)  -->
+    <a-marker id="m-bar5" type="barcode" value="5">
+      <a-cone position="0 0.6 0" radius-bottom="0.3" radius-top="0.05" height="0.85" color="#22c55e"
+              animation="property: rotation; to: 0 -360 0; loop: true; dur: 4000; easing: linear"></a-cone>
+      <a-text value="Pista 3: Estás muy cerca…" position="-0.8 1 0" scale="0.5 0.5 0.5" color="#FFFFFF"></a-text>
+    </a-marker>
+
+    <!-- Cámara -->
+    <a-entity camera></a-entity>
+
+    <!-- “Tesoro” (aparece al completar 3/3) -->
+    <a-entity id="treasure" visible="false">
+      <a-entity gltf-model="#trex" position="0 0 -2" scale="1.4 1.4 1.4"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    // --- Utilidades simples ---
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    // Beta-testers por querystring ?tester=Bruno
+    const testerName = new URLSearchParams(location.search).get('tester') || 'Invitado/a';
+    document.getElementById('playerName').textContent = testerName;
+
+    // Loader fuera cuando A-Frame/AR.js inicializa
+    window.addEventListener('load', () => setTimeout(()=> $('#loader').style.display='none', 300));
+
+    // Timer
+    let startTs = null, timerId=null;
+    function startTimer(){ if(startTs!==null) return; startTs = Date.now(); timerId = setInterval(()=>{
+      const s = Math.floor((Date.now()-startTs)/1000); const m = String(Math.floor(s/60)).padStart(2,'0'); const ss = String(s%60).padStart(2,'0');
+      $('#timer').textContent = `${m}:${ss}`;
+    }, 250); }
+    function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+
+    // Audio de victoria con WebAudio (sin archivos externos)
+    let audioCtx = null;
+    function beepWin(){ try{
+      if(!audioCtx) return; const dur=0.5; const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
+      o.type='triangle'; o.frequency.value=880; g.gain.value=0.0001; o.connect(g); g.connect(audioCtx.destination);
+      const now=audioCtx.currentTime; g.gain.exponentialRampToValueAtTime(0.4, now+0.02); g.gain.exponentialRampToValueAtTime(0.00001, now+dur);
+      o.start(); o.stop(now+dur);
+    }catch(e){}
+    }
+
+    // Confetti muy liviano en canvas
+    function confetti(){
+      const c = document.getElementById('confetti'); const ctx = c.getContext('2d');
+      const W = c.width = innerWidth; const H = c.height = innerHeight; const N=120;
+      const parts = Array.from({length:N},()=>({x:Math.random()*W,y:-20-Math.random()*H,vx:(Math.random()-.5)*1.2,vy:1+Math.random()*3,sz:2+Math.random()*4,rot:Math.random()*Math.PI}));
+      let t=0; function step(){ ctx.clearRect(0,0,W,H); t+=0.02; parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; if(p.y>H+20) p.y=-10; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle = `hsl(${(p.y+t*100)%360} 80% 60%)`; ctx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz); ctx.restore(); });
+        if(document.getElementById('final').classList.contains('show')) requestAnimationFrame(step);
+      }
+      step();
+    }
+
+    // Estado de progreso
+    const markers = ['m-hiro','m-kanji','m-bar5'];
+    const found = new Set();
+
+    function updateHUD(){
+      $('#progressCount').textContent = found.size;
+      markers.forEach(id=>{
+        const el = document.getElementById('status-'+id);
+        const dot = el.querySelector('.dot');
+        if(found.has(id)){ dot.textContent='✔'; dot.classList.remove('pending'); dot.classList.add('ok'); }
+      });
+    }
+
+    function onFound(id){
+      if(found.has(id)) return;
+      found.add(id); updateHUD(); startTimer();
+      // Feedback háptico + beep
+      if('vibrate' in navigator) navigator.vibrate(60);
+      beepWin();
+      if(found.size===markers.length){ onAllComplete(); }
+    }
+
+    function onAllComplete(){
+      stopTimer();
+      // Mostrar tesoro (aparece delante de la cámara)
+      const treasure = document.getElementById('treasure');
+      treasure.setAttribute('visible', true);
+      const timeStr = $('#timer').textContent; $('#finalTime').textContent = timeStr;
+      const modal = document.getElementById('final'); modal.classList.add('show'); confetti();
+      try{ localStorage.setItem('sacre_ar_'+testerName, JSON.stringify({done:true, time: timeStr, at: new Date().toISOString()})); }catch(e){}
+    }
+
+    // Registro de eventos markerFound/markerLost
+    markers.forEach(id=>{
+      const el = document.getElementById(id);
+      el.addEventListener('markerFound', ()=> onFound(id));
+      // Nota: no quitamos del Set si se pierde el marcador; el progreso es acumulativo
+    });
+
+    // Botón Empezar: desbloquea audio en iOS/Android
+    document.getElementById('btnStart').addEventListener('click', async ()=>{
+      try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+      document.querySelector('.help .card').style.opacity = .85;
+      document.getElementById('btnStart').innerText = 'Listo';
+    });
+  </script>
+</body>
+</html>
