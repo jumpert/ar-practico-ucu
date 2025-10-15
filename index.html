@@ -6,7 +6,40 @@
   <title>AR Treasure Hunt — Sacré Coeur</title>
   <!-- A-Frame + AR.js (versiones compatibles) -->
   <!-- AR.js 3.4.7 requiere A-Frame 1.6.0 según su documentación -->
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js">    // --- Robustez móvil: evitar pantalla negra / reintentos ---
+    const sceneEl = document.getElementById('scene');
+    let wakeLock = null;
+
+    async function requestWakeLock(){
+      try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>{}); } }catch(e){}
+    }
+
+    function safeResize(){
+      try{ sceneEl.resize(); }catch(e){}
+      // AR.js intenta gestionar el video tamaño internamente; retrigger tras pequeño delay
+      setTimeout(()=>{ try{ sceneEl.resize(); }catch(e){} }, 250);
+    }
+
+    // Reajustar al volver de background / rotación
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) safeResize(); });
+    window.addEventListener('orientationchange', ()=> setTimeout(safeResize, 400));
+    window.addEventListener('resize', ()=> setTimeout(safeResize, 200));
+
+    // Manejo de pérdida de contexto WebGL (algunos Android)
+    sceneEl.addEventListener('renderstart', ()=>{
+      const canvas = sceneEl.canvas;
+      if(!canvas) return;
+      canvas.addEventListener('webglcontextlost', (e)=>{ e.preventDefault(); }, false);
+      canvas.addEventListener('webglcontextrestored', ()=>{ setTimeout(safeResize, 200); }, false);
+    });
+
+    // Botón Empezar ahora también activa wake lock
+    document.getElementById('btnStart').addEventListener('click', async ()=>{ await requestWakeLock(); });
+
+    // Botón Reiniciar cámara
+    document.getElementById('btnReset').addEventListener('click', ()=>{ try{ safeResize(); }catch(e){} setTimeout(()=>location.reload(), 500); });
+
+  </script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
   <style>
     :root{
@@ -94,8 +127,10 @@
       </div>
     </div>
 
-    <div class="footer">
+        <div class="footer">
       <div class="card muted">Tip: vibra y suena al encontrar una pista. Si no oyes sonido, pulsa “Empezar”.</div>
+      <button class="btn" id="btnReset" title="Reiniciar cámara si se queda negra">Reiniciar cámara</button>
+    </div>
     </div>
   </div>
 
@@ -112,16 +147,17 @@
   </div>
 
   <!-- Escena AR -->
+    <!-- Escena AR (ajustada para evitar pantallas negras en móviles) -->
   <a-scene
     vr-mode-ui="enabled:false"
-    renderer="logarithmicDepthBuffer:true"
+    renderer="antialias: true; alpha: true; precision: mediump; powerPreference: high-performance"
     embedded
-    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
+    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; videoTexture: true; debugUIEnabled:false;"
     id="scene">
 
     <a-assets>
       <!-- Modelo de ‘tesoro’ (trex de ejemplo) -->
-      <a-asset-item id="trex" src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/examples/image-tracking/nft/trex/scene.gltf"></a-asset-item>
+      <a-asset-item id="trex" src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/examples/image-tracking/nft/trex/scene.gltf" crossorigin="anonymous"></a-asset-item>
     </a-assets>
 
     <!-- Marcador 1: HIRO -->
