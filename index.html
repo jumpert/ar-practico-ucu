@@ -2,114 +2,79 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
-  />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <title>AR Treasure Hunt — Sacré Coeur</title>
 
-  <!-- A-Frame (1.7.1) -->
+  <!-- A-Frame (estable actual) -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-  <!-- AR.js (A-Frame build) -->
+  <!-- AR.js (build para A-Frame) -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
 
   <style>
-    :root{ --bg:#0b1020; --fg:#e7eefb; --muted:#97a3b6; --brand:#0ea5e9; --ok:#22c55e; --warn:#f59e0b;}
-    html,body{margin:0;padding:0;background:#000;font-family:system-ui,Segoe UI,Roboto,Inter,Arial}
-    .arjs-loader{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:9999}
-    .arjs-loader div{color:#fff;font-size:1.1rem;text-align:center}
-
-    .hud{position:fixed;inset:0;pointer-events:none;z-index:9990}
-    .card{pointer-events:auto;backdrop-filter:blur(8px);background:rgba(11,16,32,.6);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;color:var(--fg)}
-    .top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+    html,body{margin:0;background:#000;font-family:system-ui,Segoe UI,Roboto,Inter,Arial}
+    .hud{position:fixed;left:12px;right:12px;top:12px;display:flex;gap:10px;justify-content:space-between;z-index:9990;pointer-events:none}
+    .card{pointer-events:auto;backdrop-filter:blur(6px);background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 12px;color:#e5e7eb}
     .title{font-weight:700}
-    .muted{color:var(--muted);font-size:.9rem}
     .pills{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:6px 10px;border:1px solid rgba(255,255,255,.12)}
     .pill .dot{font-weight:700}
     .timer{font-variant-numeric:tabular-nums}
-    .help{position:absolute;right:12px;bottom:12px;max-width:min(92vw,460px);display:flex;flex-direction:column;gap:8px}
-    .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;background:linear-gradient(135deg,var(--brand),#6366f1);color:#fff;font-weight:600;cursor:pointer}
-    .footer{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;align-items:center}
     .final{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:10000}
     .final.show{display:flex}
-    .final .box{background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.78));border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:22px 20px;width:min(92vw,560px);color:#fff;text-align:center}
-    #confetti{position:absolute;inset:0;pointer-events:none}
-    @media (max-width:520px){ .muted{font-size:.8rem} .pill{font-size:.85rem} }
+    .final .box{background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:20px 18px;color:#fff;text-align:center;width:min(92vw,520px)}
   </style>
 </head>
 <body>
-  <!-- Loader (AR.js la quita si usás la clase .arjs-loader cuando el video está listo) -->
-  <div class="arjs-loader" id="loader"><div>Inicializando cámara…<br>Si es la primera vez, acepta el permiso de cámara.</div></div>
-
-  <!-- HUD -->
+  <!-- HUD mínimo -->
   <div class="hud">
-    <div class="top">
-      <div class="card">
-        <div class="title">Búsqueda del Tesoro — Sacré Coeur</div>
-        <div class="muted">Jugador/a: <span id="playerName">Invitado/a</span> · Progreso <span id="progressCount">0</span>/3</div>
-      </div>
-      <div class="card pills">
-        <span class="pill" id="status-m-hiro">Hiro <span class="dot">•</span></span>
-        <span class="pill" id="status-m-kanji">Kanji <span class="dot">•</span></span>
-        <span class="pill" id="status-m-bar5">Barcode 5 <span class="dot">•</span></span>
-        <span class="pill timer" id="timer">00:00</span>
-      </div>
+    <div class="card">
+      <div class="title">Búsqueda del Tesoro — Sacré Coeur</div>
+      <div style="opacity:.8">Progreso <span id="progressCount">0</span>/3</div>
     </div>
-    <div class="help">
-      <div class="card">
-        <div class="muted">
-          Marcadores soportados por AR.js: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode</b>.
-          Puedes generar patrones propios (<code>.patt</code>) si querés personalizar. 
-        </div>
-        <div style="margin:.5rem 0 .75rem 0;color:#cbd5e1">Abrí este link bajo <b>HTTPS</b>, apuntá al marcador y seguí las pistas.</div>
-        <button class="btn" id="btnStart" title="Habilitar audio y bloque de pantalla">Iniciar</button>
-      </div>
+    <div class="card pills">
+      <span class="pill" id="status-m-hiro">Hiro <span class="dot">•</span></span>
+      <span class="pill" id="status-m-kanji">Kanji <span class="dot">•</span></span>
+      <span class="pill" id="status-m-bar5">Barcode 5 <span class="dot">•</span></span>
+      <span class="pill timer" id="timer">00:00</span>
     </div>
-    <!-- <div class="footer">
-      <div class="card muted">Tip: si el video se detiene o la pantalla rota, usa “Reiniciar”.</div>
-      <button class="btn" id="btnReset">Reiniciar</button>
-    </div> -->
   </div>
 
-  <!-- Final -->
+  <!-- Mensaje final -->
   <div class="final" id="final">
-    <canvas id="confetti"></canvas>
     <div class="box">
       <h2>🎉 ¡Tesoro encontrado! 🎉</h2>
-      <p>Completaste las 3 pistas en <strong id="finalTime">--:--</strong>.<br/>Volvé al inicio para registrar tu tiempo.</p>
-      <button class="btn" onclick="document.getElementById('final').classList.remove('show')">Cerrar</button>
+      <p>Completaste las 3 pistas en <strong id="finalTime">--:--</strong>.</p>
     </div>
   </div>
 
-  <!-- ESCENA AR -->
+  <!-- ESCENA AR (sin extras innecesarios) -->
   <a-scene
     id="scene"
     vr-mode-ui="enabled:false"
     renderer="antialias:true; alpha:true; precision:mediump; powerPreference:high-performance"
     embedded
-    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled:false">
+    arjs="trackingMethod: best; sourceType: webcam; facingMode: environment; debugUIEnabled:false">
     
-    <!-- Assets: ejemplo glTF (trex) del repo de AR.js -->
+    <!-- (Opcional) un modelo glTF sencillo para el “tesoro” -->
     <a-assets>
       <a-asset-item id="trex" src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/examples/image-tracking/nft/trex/scene.gltf" crossorigin="anonymous"></a-asset-item>
     </a-assets>
 
-    <!-- Marcador 1: Hiro -->
+    <!-- Marcador 1: HIRO -->
     <a-marker id="m-hiro" preset="hiro" emitevents="true">
-      <a-box color="#f97316" depth="0.5" height="0.5" width="0.5" position="0 0.5 0"
+      <a-box color="#f97316" position="0 0.5 0" depth="0.5" height="0.5" width="0.5"
              animation="property: rotation; to: 0 360 0; loop: true; dur: 3500; easing: linear"></a-box>
-      <a-text value="Pista 1: Inicio" color="#fff" position="-0.6 1 0" scale="0.5 0.5 0.5"></a-text>
+      <a-text value="Pista 1: Inicio" color="#fff" position="-0.5 1 0" scale="0.5 0.5 0.5"></a-text>
     </a-marker>
 
-    <!-- Marcador 2: Kanji -->
+    <!-- Marcador 2: KANJI -->
     <a-marker id="m-kanji" preset="kanji" emitevents="true">
-      <a-sphere color="#3b82f6" radius="0.3" position="0 0.5 0"
+      <a-sphere color="#3b82f6" position="0 0.5 0" radius="0.3"
                 animation="property: position; dir: alternate; dur: 1200; easing: easeInOutSine; to: 0 1.1 0; loop: true"></a-sphere>
       <a-text value="Pista 2: Sigue las escaleras…" color="#fff" position="-0.9 1 0" scale="0.5 0.5 0.5"></a-text>
     </a-marker>
 
-    <!-- Marcador 3: Barcode (valor 5) -->
+    <!-- Marcador 3: BARCODE (valor 5) -->
     <a-marker id="m-bar5" type="barcode" value="5" emitevents="true">
       <a-cone color="#22c55e" position="0 0.6 0" radius-bottom="0.3" radius-top="0.05" height="0.85"
               animation="property: rotation; to: 0 -360 0; loop: true; dur: 4000; easing: linear"></a-cone>
@@ -121,60 +86,70 @@
 
     <!-- Tesoro (aparece al completar 3/3) -->
     <a-entity id="treasure" visible="false">
-      <a-entity gltf-model="#trex" position="0 0 -2" scale="1.3 1.3 1.3"
+      <a-entity gltf-model="#trex" position="0 0 -2" scale="1.2 1.2 1.2"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"></a-entity>
     </a-entity>
   </a-scene>
 
   <script>
-    // Utilidades
-    const $ = (s)=>document.querySelector(s);
-    const testerName = new URLSearchParams(location.search).get('tester') || 'Invitado/a';
-    $('#playerName').textContent = testerName;
-
-    // Timer
+    // ------------------------------
+    // 1) Timer simple
+    // ------------------------------
     let startTs=null, tId=null;
-    function startTimer(){ if(startTs!==null) return; startTs=Date.now(); tId=setInterval(()=>{ const s=Math.floor((Date.now()-startTs)/1000); $('#timer').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; },250); }
+    const $ = s => document.querySelector(s);
+    function startTimer(){
+      if(startTs!==null) return;
+      startTs = Date.now();
+      tId = setInterval(()=>{
+        const s = Math.floor((Date.now()-startTs)/1000);
+        $('#timer').textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+      }, 250);
+    }
     function stopTimer(){ if(tId){ clearInterval(tId); tId=null; } }
 
-    // Audio (requiere gesto de usuario para iOS)
-    let audioCtx=null;
-    function beep(){ if(!audioCtx) return; try{ const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type='triangle'; o.frequency.value=880; g.gain.value=0.0001; o.connect(g); g.connect(audioCtx.destination); const now=audioCtx.currentTime; g.gain.exponentialRampToValueAtTime(0.4, now+0.02); g.gain.exponentialRampToValueAtTime(0.00001, now+0.45); o.start(); o.stop(now+0.48);}catch(e){} }
-
-    // Wake Lock (opcional)
-    let wakeLock=null; async function requestWakeLock(){ try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>{}); } }catch(e){} }
-
-    // Confetti
-    function confetti(){ const c=$('#confetti'), ctx=c.getContext('2d'); const W=c.width=innerWidth, H=c.height=innerHeight; const parts=Array.from({length:120},()=>({x:Math.random()*W,y:-20-Math.random()*H,vx:(Math.random()-.5)*1.2,vy:1+Math.random()*3,sz:2+Math.random()*4,rot:Math.random()*Math.PI})); function step(){ ctx.clearRect(0,0,W,H); parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.rot+=0.1; if(p.y>H+20) p.y=-10; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=`hsl(${(p.y)%360} 80% 60%)`; ctx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz); ctx.restore();}); if($('#final').classList.contains('show')) requestAnimationFrame(step);} step(); }
-
-    // Progreso
-    const markers=['m-hiro','m-kanji','m-bar5'];
+    // ------------------------------
+    // 2) Progreso de marcadores
+    // ------------------------------
+    const markers = ['m-hiro','m-kanji','m-bar5'];
     const found = new Set();
-    function updateHUD(){ $('#progressCount').textContent = found.size; for(const id of markers){ const pill=document.getElementById('status-'+id); const dot=pill?.querySelector('.dot'); if(dot && found.has(id)) { dot.textContent='✔'; dot.style.color='var(--ok)'; } } }
+    function updateHUD(){
+      $('#progressCount').textContent = found.size;
+      for(const id of markers){
+        const pill = document.getElementById('status-'+id);
+        const dot = pill?.querySelector('.dot');
+        if(dot && found.has(id)){ dot.textContent = '✔'; dot.style.color = '#22c55e'; }
+      }
+    }
+    function onFound(id){
+      if(found.has(id)) return;
+      found.add(id); updateHUD(); startTimer();
+      if(found.size===markers.length){
+        stopTimer();
+        document.getElementById('treasure').setAttribute('visible', true);
+        document.getElementById('finalTime').textContent = document.getElementById('timer').textContent;
+        document.getElementById('final').classList.add('show');
+      }
+    }
 
-    function onFound(id){ if(found.has(id)) return; found.add(id); updateHUD(); startTimer(); if('vibrate' in navigator) navigator.vibrate(60); beep(); if(found.size===markers.length){ stopTimer(); $('#treasure').setAttribute('visible', true); const tt=$('#timer').textContent; $('#finalTime').textContent=tt; $('#final').classList.add('show'); confetti(); try{ localStorage.setItem('sacre_ar_'+testerName, JSON.stringify({done:true,time:tt,at:new Date().toISOString()})); }catch(e){} } }
+    // ------------------------------
+    // 3) Suscripción a eventos de AR.js
+    // ------------------------------
+    for(const id of markers){
+      const el = document.getElementById(id);
+      el.addEventListener('markerFound', ()=> onFound(id)); // acumulativo
+      // el.addEventListener('markerLost', ()=> { ...si quisieras lógica al perderlo... });
+    }
 
-    // Eventos AR.js (útil para depurar cámara)
+    // ------------------------------
+    // 4) Robustez: resize y cámara
+    // ------------------------------
     const sceneEl = document.getElementById('scene');
-    sceneEl.addEventListener('camera-init', ()=>{ document.getElementById('loader').style.display='none'; startTimer(); });
-    sceneEl.addEventListener('camera-error', (e)=>{ alert('No se pudo iniciar la cámara. ¿HTTPS y permisos concedidos?'); console.error(e); });
-
-    // Suscribirse a markers
-    for(const id of markers){ const el=document.getElementById(id); el.addEventListener('markerFound', ()=>onFound(id)); /* progreso acumulativo */ }
-
-    // Robustez móvil: handle rotación/resize y pérdida de contexto WebGL
-    function safeResize(){ try{ sceneEl.resize && sceneEl.resize(); }catch(e){} setTimeout(()=>{ try{ sceneEl.resize && sceneEl.resize(); }catch(e){} }, 250); }
+    sceneEl.addEventListener('camera-init', ()=> { /* cámara lista */ startTimer(); });
+    sceneEl.addEventListener('camera-error', (e)=> { alert('No se pudo iniciar la cámara (¿HTTPS y permisos?)'); console.error(e); });
+    function safeResize(){ try{ sceneEl.resize && sceneEl.resize(); }catch(e){} }
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) safeResize(); });
     window.addEventListener('orientationchange', ()=> setTimeout(safeResize, 400));
     window.addEventListener('resize', ()=> setTimeout(safeResize, 200));
-    sceneEl.addEventListener('renderstart', ()=>{ const canvas=sceneEl.canvas; if(!canvas) return; canvas.addEventListener('webglcontextlost', (e)=>{ e.preventDefault(); }, false); canvas.addEventListener('webglcontextrestored', ()=> setTimeout(safeResize, 200), false); });
-
-    // Botones
-    document.getElementById('btnStart').addEventListener('click', async ()=>{ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); await audioCtx.resume(); }catch(e){} await requestWakeLock(); });
-    document.getElementById('btnReset').addEventListener('click', ()=>{ safeResize(); setTimeout(()=>location.reload(), 400); });
-
-    // Nombre tester en HUD (por query ?tester=Bruno)
-    document.getElementById('playerName').textContent = testerName;
   </script>
 </body>
 </html>
