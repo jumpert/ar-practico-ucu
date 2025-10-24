@@ -6,68 +6,12 @@ const cluesEl = document.getElementById("clues");
 const markerHintEl = document.getElementById("markerHint");
 const progressBar = document.getElementById("progressBar");
 const finalOverlay = document.getElementById("finalOverlay");
+const audioPrompt = document.getElementById("audioPrompt");
 
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-let audioContext;
-
-function ensureAudioContext() {
-  if (!AudioContextClass) {
-    return null;
-  }
-
-  if (!audioContext) {
-    audioContext = new AudioContextClass();
-  }
-
-  if (audioContext.state === "suspended") {
-    audioContext.resume().catch(() => {});
-  }
-
-  return audioContext;
-}
-
-function playPing() {
-  const ctx = ensureAudioContext();
-  if (!ctx) return;
-
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(880, ctx.currentTime);
-
-  gain.gain.setValueAtTime(0, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.01);
-  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
-
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.25);
-}
-
-function playCheer() {
-  const ctx = ensureAudioContext();
-  if (!ctx) return;
-
-  const now = ctx.currentTime;
-  const frequencies = [523.25, 659.25, 783.99];
-
-  frequencies.forEach((freq, index) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = index === 0 ? "triangle" : "sine";
-    osc.frequency.setValueAtTime(freq, now);
-
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.35 / frequencies.length, now + 0.05);
-    gain.gain.linearRampToValueAtTime(0, now + 1.2);
-
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 1.25);
-  });
-}
+let audioContext = null;
+let audioUnlocked = false;
+let finalPlayed = false;
 
 const CLUES = {
   "marker-1": {
@@ -90,43 +34,32 @@ const MARKER_NAMES = {
   "marker-3": "Tesoro Final"
 };
 
-let audioContext;
-let audioUnlocked = false;
-let finalPlayed = false;
-
 window.addEventListener("DOMContentLoaded", () => {
   initializeGame();
-});
-
-[
-  "click",
-  "touchstart"
-].forEach(eventName => {
-  window.addEventListener(eventName, () => {
-    ensureAudioContext();
-  }, { once: true, passive: true });
+  setupAudioUnlock();
 });
 
 function initializeGame() {
   const markers = document.querySelectorAll("a-marker");
 
   markers.forEach((marker) => {
-    const id = marker.id;
+    const { id } = marker;
 
     marker.addEventListener("markerFound", () => {
-      if (!foundMarkers.has(id)) {
-        foundMarkers.add(id);
-        console.log(`✅ Marcador detectado: ${id}`);
+      if (foundMarkers.has(id)) {
+        return;
+      }
 
-        playPing();
-        playPing();
-        flashFeedback();
-        showMarkerMessage(id);
-        updateUI();
+      foundMarkers.add(id);
+      console.log(`✅ Marcador detectado: ${id}`);
 
-        if (foundMarkers.size === TOTAL_MARKERS) {
-          setTimeout(showFinalFeedback, 1000);
-        }
+      playPing();
+      flashFeedback();
+      showMarkerMessage(id);
+      updateUI();
+
+      if (foundMarkers.size === TOTAL_MARKERS) {
+        setTimeout(showFinalFeedback, 800);
       }
     });
 
@@ -135,24 +68,22 @@ function initializeGame() {
     });
   });
 
-  document.getElementById("closeFinal").addEventListener("click", resetGame);
+  const closeButton = document.getElementById("closeFinal");
+  if (closeButton) {
+    closeButton.addEventListener("click", resetGame);
+  }
 
-  setupAudioUnlock();
   updateUI();
 }
 
 function setupAudioUnlock() {
-  if (!audioPrompt) {
+  if (!AudioContextClass || !audioPrompt) {
     return;
   }
 
   const unlockAudio = () => {
-    if (!audioContext) {
-      audioContext = createAudioContext();
-    }
-
-    if (audioContext && audioContext.state === "suspended") {
-      audioContext.resume().catch(() => {});
+    if (!ensureAudioContext()) {
+      return;
     }
 
     audioUnlocked = true;
@@ -162,8 +93,8 @@ function setupAudioUnlock() {
     window.removeEventListener("touchstart", unlockAudio);
   };
 
-  window.addEventListener("click", unlockAudio);
-  window.addEventListener("touchstart", unlockAudio);
+  window.addEventListener("click", unlockAudio, { passive: true });
+  window.addEventListener("touchstart", unlockAudio, { passive: true });
 
   setTimeout(() => {
     if (!audioUnlocked) {
@@ -172,22 +103,21 @@ function setupAudioUnlock() {
   }, 600);
 }
 
-function createAudioContext() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    return Ctx ? new Ctx() : null;
-  } catch (error) {
-    console.warn("No se pudo inicializar AudioContext", error);
+function ensureAudioContext() {
+  if (!AudioContextClass) {
     return null;
   }
-}
 
-function ensureAudioContext() {
   if (!audioContext) {
-    audioContext = createAudioContext();
+    try {
+      audioContext = new AudioContextClass();
+    } catch (error) {
+      console.warn("No se pudo inicializar AudioContext", error);
+      return null;
+    }
   }
 
-  if (audioContext && audioContext.state === "suspended") {
+  if (audioContext.state === "suspended") {
     audioContext.resume().catch(() => {});
   }
 
@@ -244,15 +174,17 @@ function playCelebrationTune() {
 
 function showMarkerMessage(markerId) {
   const clue = CLUES[markerId];
-  if (clue) {
-    cluesEl.textContent = clue.message;
-    markerHintEl.textContent = clue.hint;
-
-    cluesEl.style.animation = "none";
-    requestAnimationFrame(() => {
-      cluesEl.style.animation = "highlight 0.6s ease";
-    });
+  if (!clue) {
+    return;
   }
+
+  cluesEl.textContent = clue.message;
+  markerHintEl.textContent = clue.hint;
+
+  cluesEl.style.animation = "none";
+  requestAnimationFrame(() => {
+    cluesEl.style.animation = "highlight 0.6s ease";
+  });
 }
 
 function updateUI() {
@@ -264,10 +196,11 @@ function updateUI() {
   if (foundMarkers.size === 0) {
     cluesEl.textContent = "Escanea el marcador inicial para comenzar la aventura...";
     markerHintEl.textContent = "";
-  } else {
-    const foundNames = Array.from(foundMarkers).map((id) => MARKER_NAMES[id]);
-    markerHintEl.textContent = `Encontrados: ${foundNames.join(", ")}`;
+    return;
   }
+
+  const foundNames = Array.from(foundMarkers).map((id) => MARKER_NAMES[id]);
+  markerHintEl.textContent = `Encontrados: ${foundNames.join(", ")}`;
 }
 
 function flashFeedback() {
@@ -279,13 +212,14 @@ function flashFeedback() {
 }
 
 function showFinalFeedback() {
-  if (finalPlayed) return;
+  if (finalPlayed) {
+    return;
+  }
+
   finalPlayed = true;
-
-
   finalOverlay.classList.add("show");
-  playCheer();
 
+  playCelebrationTune();
   createCelebrationEffects();
 }
 
@@ -293,13 +227,13 @@ function createCelebrationEffects() {
   const overlay = document.getElementById("finalOverlay");
   for (let i = 0; i < 20; i++) {
     setTimeout(() => {
-      const emoji = document.createElement('div');
-      emoji.textContent = ['🎉', '✨', '⭐', '🎊', '💫'][Math.floor(Math.random() * 5)];
-      emoji.classList.add('emoji');
-      emoji.style.position = 'absolute';
-      emoji.style.left = Math.random() * 100 + 'vw';
-      emoji.style.top = '-50px';
-      emoji.style.fontSize = (Math.random() * 30 + 20) + 'px';
+      const emoji = document.createElement("div");
+      emoji.textContent = ["🎉", "✨", "⭐", "🎊", "💫"][Math.floor(Math.random() * 5)];
+      emoji.classList.add("emoji");
+      emoji.style.position = "absolute";
+      emoji.style.left = Math.random() * 100 + "vw";
+      emoji.style.top = "-50px";
+      emoji.style.fontSize = Math.random() * 30 + 20 + "px";
       emoji.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
       overlay.appendChild(emoji);
 
@@ -313,7 +247,7 @@ function resetGame() {
   finalPlayed = false;
   finalOverlay.classList.remove("show");
 
-  finalOverlay.querySelectorAll('.emoji').forEach(el => el.remove());
+  finalOverlay.querySelectorAll(".emoji").forEach((el) => el.remove());
 
   updateUI();
   cluesEl.textContent = "¡Nueva partida! Encuentra el marcador inicial...";
