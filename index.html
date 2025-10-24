@@ -16,7 +16,7 @@
       font-family: Arial, sans-serif;
       background: #000;
     }
-    
+
     #ui {
       position: fixed;
       left: 10px;
@@ -31,7 +31,7 @@
       max-width: 300px;
       transition: all 0.3s ease;
     }
-    
+
     #progress {
       margin: 8px 0;
       height: 6px;
@@ -39,14 +39,14 @@
       border-radius: 3px;
       overflow: hidden;
     }
-    
+
     #progressBar {
       height: 100%;
       background: linear-gradient(90deg, #4CAF50, #8BC34A);
       width: 0%;
       transition: width 0.5s ease;
     }
-    
+
     #finalOverlay {
       position: fixed;
       inset: 0;
@@ -60,28 +60,28 @@
       text-align: center;
       padding: 20px;
     }
-    
+
     #finalOverlay.show {
       display: flex;
       animation: fadeIn 0.5s ease;
     }
-    
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
     }
-    
+
     .celebration {
       font-size: 4em;
       margin-bottom: 20px;
       animation: bounce 1s infinite alternate;
     }
-    
+
     @keyframes bounce {
       from { transform: scale(1); }
       to { transform: scale(1.1); }
     }
-    
+
     button {
       margin-top: 20px;
       padding: 12px 24px;
@@ -93,15 +93,35 @@
       cursor: pointer;
       transition: background 0.3s;
     }
-    
+
     button:hover {
       background: #45a049;
     }
-    
+
     .marker-hint {
       font-size: 12px;
       opacity: 0.8;
       margin-top: 8px;
+    }
+
+    #audioPrompt {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-size: 14px;
+      display: none;
+      z-index: 9999;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    #audioPrompt.show {
+      display: block;
     }
   </style>
 </head>
@@ -116,6 +136,10 @@
     <div class="marker-hint" id="markerHint"></div>
   </div>
 
+  <div id="audioPrompt" role="status" aria-live="polite">
+    🔊 Toca la pantalla para activar el sonido.
+  </div>
+
   <div id="finalOverlay" role="dialog" aria-modal="true">
     <div class="celebration">🎉✨</div>
     <h1>¡Tesoro Encontrado!</h1>
@@ -125,7 +149,7 @@
   </div>
 
   <!-- Escena AR -->
-  <a-scene
+  <a-scene 
     embedded 
     arjs="sourceType: webcam; debugUIEnabled: false;"
     vr-mode-ui="enabled: false"
@@ -138,7 +162,7 @@
       <a-entity position="0 0.5 0">
         <a-box position="0 0.2 0" color="#FF6B6B" width="0.4" height="0.4" depth="0.4"
                animation="property: rotation; to: 0 360 0; loop: true; dur: 4000"></a-box>
-        <a-text value="INICIO" position="0 0.8 0" align="center" color="#FFF" 
+        <a-text value="INICIO" position="0 0.8 0" align="center" color="#FFF"
                 width="3" scale="2 2 2"></a-text>
       </a-entity>
     </a-marker>
@@ -155,7 +179,7 @@
           <a-box position="0.04 -0.05 0" color="#FFD700" width="0.04" height="0.08" depth="0.04"></a-box>
           <a-box position="0 -0.1 0" color="#FFD700" width="0.04" height="0.08" depth="0.04"></a-box>
         </a-entity>
-        
+
         <a-text value="LLAVE MÁGICA" position="0 0.8 0" align="center" color="#4ECDC4"></a-text>
         <a-animation attribute="position" dur="2000" direction="alternate" repeat="indefinite"
                     to="0 0.4 0"></a-animation>
@@ -178,7 +202,7 @@
           <a-cylinder position="-0.1 0.35 -0.1" color="#FFD700" radius="0.04" height="0.02" rotation="90 0 0"></a-cylinder>
           <a-cylinder position="0.15 0.4 -0.05" color="#FFD700" radius="0.04" height="0.02" rotation="90 0 0"></a-cylinder>
         </a-entity>
-        
+
         <a-text value="TESORO" position="0 1.2 0" align="center" color="#FFD93D" scale="2 2 2"></a-text>
         <a-light type="point" intensity="2" color="#FFD93D" position="0 1 0"></a-light>
         <a-animation attribute="rotation" dur="8000" repeat="indefinite" to="0 360 0"></a-animation>
@@ -188,6 +212,6 @@
     <a-entity camera></a-entity>
   </a-scene>
 
-  <script src="./js/game.js"></script>
+  <script src="./AR-main/js/game.js"></script>
 </body>
 </html>
