@@ -6,9 +6,68 @@ const cluesEl = document.getElementById("clues");
 const markerHintEl = document.getElementById("markerHint");
 const progressBar = document.getElementById("progressBar");
 const finalOverlay = document.getElementById("finalOverlay");
-const cheer = document.getElementById("cheer");
 
-const ping = new Audio("./assets/sounds/ping.mp3");
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+let audioContext;
+
+function ensureAudioContext() {
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  if (!audioContext) {
+    audioContext = new AudioContextClass();
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
+
+  return audioContext;
+}
+
+function playPing() {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.01);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.25);
+}
+
+function playCheer() {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  const frequencies = [523.25, 659.25, 783.99];
+
+  frequencies.forEach((freq, index) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = index === 0 ? "triangle" : "sine";
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.35 / frequencies.length, now + 0.05);
+    gain.gain.linearRampToValueAtTime(0, now + 1.2);
+
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.25);
+  });
+}
 
 const CLUES = {
   "marker-1": {
@@ -35,6 +94,15 @@ window.addEventListener("DOMContentLoaded", () => {
   initializeGame();
 });
 
+[
+  "click",
+  "touchstart"
+].forEach(eventName => {
+  window.addEventListener(eventName, () => {
+    ensureAudioContext();
+  }, { once: true, passive: true });
+});
+
 function initializeGame() {
   const markers = document.querySelectorAll("a-marker");
 
@@ -46,7 +114,7 @@ function initializeGame() {
         foundMarkers.add(id);
         console.log(`✅ Marcador detectado: ${id}`);
 
-        ping.play().catch(() => {});
+        playPing();
         flashFeedback();
         showMarkerMessage(id);
         updateUI();
@@ -108,10 +176,10 @@ let finalPlayed = false;
 function showFinalFeedback() {
   if (finalPlayed) return;
   finalPlayed = true;
-  
+
   finalOverlay.classList.add("show");
-  cheer.play().catch(() => {});
-  
+  playCheer();
+
   createCelebrationEffects();
 }
 
@@ -121,6 +189,7 @@ function createCelebrationEffects() {
     setTimeout(() => {
       const emoji = document.createElement('div');
       emoji.textContent = ['🎉', '✨', '⭐', '🎊', '💫'][Math.floor(Math.random() * 5)];
+      emoji.classList.add('emoji');
       emoji.style.position = 'absolute';
       emoji.style.left = Math.random() * 100 + 'vw';
       emoji.style.top = '-50px';
@@ -138,10 +207,8 @@ function resetGame() {
   finalPlayed = false;
   finalOverlay.classList.remove("show");
 
-  document.querySelectorAll('#finalOverlay div').forEach(el => {
-    if (el.className !== 'celebration') el.remove();
-  });
-  
+  finalOverlay.querySelectorAll('.emoji').forEach(el => el.remove());
+
   updateUI();
   cluesEl.textContent = "¡Nueva partida! Encuentra el marcador inicial...";
   markerHintEl.textContent = "";
