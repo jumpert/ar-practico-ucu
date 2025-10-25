@@ -1,238 +1,221 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>AR Treasure Hunt — Sacré Coeur</title>
-
-  <!-- A-Frame + AR.js (AR.js 3.4.7) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Búsqueda del Tesoro AR – AR.js + A‑Frame</title>
+  <!-- A‑Frame (estable 1.7.1). Si tu dispositivo tiene problemas, prueba 1.6.0 -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <!-- AR.js (marker + location) para A‑Frame v3.4.7 -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
-
   <style>
-    :root { --fg:#e7eefb; --muted:#97a3b6; --ok:#22c55e; --brand:#0ea5e9; }
-    html,body{margin:0;padding:0;background:#000;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Inter,Arial;overflow:hidden}
-    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:9999}
-    .panel{background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;max-width:min(92vw,560px)}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
-    .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;background:linear-gradient(135deg,var(--brand),#6366f1);color:#fff;font-weight:700;cursor:pointer}
-    .btn[disabled]{opacity:.6;cursor:not-allowed}
-    select{padding:8px;border-radius:10px;background:#0b1224;color:#fff;border:1px solid rgba(255,255,255,.16);min-width:220px}
-    .muted{color:var(--muted);font-size:.95rem}
-    .hud{position:fixed;inset:0;pointer-events:none;z-index:9990}
-    .top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .card{pointer-events:auto;background:rgba(11,16,32,.58);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 12px}
-    .pills{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:6px 10px;border:1px solid rgba(255,255,255,.12)}
-    .pill .dot{font-weight:900}
-    .timer{font-variant-numeric:tabular-nums}
-    .help{position:absolute;right:12px;bottom:12px;max-width:min(92vw,480px)}
-    .final{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:10000}
-    .final.show{display:flex}
-    .final .box{background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.8));border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:22px 20px;width:min(92vw,560px);text-align:center}
+    :root{--bg:rgba(0,0,0,.6);--ok:#2ecc71;--warn:#f1c40f;--err:#e74c3c;--txt:#fff}
+    html,body{margin:0;height:100%;background:#000;}
+    /* Overlay superior (estado y acciones) */
+    #hud{position:fixed;inset:auto 0 0 0;top:0;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--txt);pointer-events:none}
+    #left{display:flex;gap:10px;align-items:center}
+    .chip{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid rgba(255,255,255,.15);backdrop-filter:saturate(160%) blur(6px);border-radius:999px;padding:6px 10px;font-weight:600}
+    .dot{width:10px;height:10px;border-radius:50%;background:#888}
+    .found .dot{background:var(--ok)}
+    .pending .dot{background:#888}
+    #timer{background:var(--bg);border:1px solid rgba(255,255,255,.15);backdrop-filter:saturate(160%) blur(6px);border-radius:12px;padding:6px 10px;font-weight:700}
+    #right{display:flex;gap:8px;pointer-events:auto}
+    button{appearance:none;border:none;border-radius:12px;padding:8px 12px;font-weight:700;cursor:pointer;background:#111;color:#fff;border:1px solid rgba(255,255,255,.2)}
+    button:hover{filter:brightness(1.1)}
+    a.btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+
+    /* Pantalla de inicio para habilitar audio (iOS/Android requieren gesto) */
+    #start{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,.08), transparent 60%), #0b0f17;color:white;display:grid;place-items:center;z-index:10}
+    #start .card{max-width:680px;margin:0 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:20px 18px;text-align:center}
+    #start h1{margin-top:0;font-size:1.4rem}
+    #start p{opacity:.9}
+    #start button{font-size:1.1rem;padding:12px 16px;background:#2ecc71;border-color:transparent}
+
+    /* Mensaje de victoria */
+    #win{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.56);color:#fff;z-index:9}
+    #win .box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);backdrop-filter:saturate(160%) blur(8px);border-radius:18px;padding:20px 18px;text-align:center;max-width:560px;margin:0 16px}
+    #win h2{margin:.2rem 0 0;font-size:1.6rem}
+    #win .big{font-size:3rem}
+
+    /* Tips móviles */
+    #tips{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;background:var(--bg);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:8px 12px;font-size:.9rem}
   </style>
 </head>
 <body>
-  <!-- Pantalla de arranque: permiso + selección de cámara -->
-  <div class="overlay" id="gate">
-    <div class="panel">
-      <h3>Laboratorio: Búsqueda del Tesoro (AR.js)</h3>
-      <p class="muted">Abrí esta página por <b>HTTPS</b> o <b>localhost</b>. Elegí cámara y tocá <b>Empezar</b>.</p>
-      <div class="row">
-        <label for="camSel">Cámara:</label>
-        <select id="camSel"><option value="">Buscando cámaras…</option></select>
-        <button class="btn" id="btnStart">Empezar</button>
+  <!-- Pantalla de inicio para conceder cámara y audio -->
+  <div id="start" role="dialog" aria-modal="true">
+    <div class="card">
+      <h1>🔎 Búsqueda del Tesoro AR</h1>
+      <p>Escaneá 3 marcadores <strong>(Hiro, Kanji y Letra A)</strong> en cualquier orden. Al ver cada marcador se desbloquea una pista. Cuando encuentres los 3, ¡aparece el tesoro!<br>Si necesitás marcadores de prueba, tocá “Abrir marcadores”.</p>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+        <a class="btn" target="_blank" rel="noopener" href="https://commons.wikimedia.org/wiki/File:Hiro_Kanji_3Markers.pdf">📄 Abrir marcadores (PDF)</a>
+        <a class="btn" target="_blank" rel="noopener" href="https://jeromeetienne.github.io/AR.js/three.js/examples/marker-training/examples/generator.html">🖨️ Generar marcador propio</a>
       </div>
-      <div class="row"><small class="muted" id="diag"></small></div>
-      <details style="margin-top:8px">
-        <summary>¿Cómo jugar?</summary>
-        <ul class="muted">
-          <li>Escaneá 3 marcadores: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode 5</b>.</li>
-          <li>Al ver cada marcador aparece una pista distinta.</li>
-          <li>Completá los 3 para revelar el <b>tesoro</b>.</li>
-        </ul>
-      </details>
+      <p style="margin:.6rem 0 1.2rem;opacity:.85">Consejo: buena luz y marcador plano. Evitá reflejos.</p>
+      <button id="btnStart">🎬 Comenzar</button>
     </div>
   </div>
 
   <!-- HUD -->
-  <div class="hud" aria-hidden="true">
-    <div class="top">
-      <div class="card">
-        <div class="muted">Progreso: <span id="progress">0</span>/3</div>
-      </div>
-      <div class="card pills">
-        <span class="pill" id="p-hiro">Hiro <span class="dot">•</span></span>
-        <span class="pill" id="p-kanji">Kanji <span class="dot">•</span></span>
-        <span class="pill" id="p-bc5">Barcode 5 <span class="dot">•</span></span>
-        <span class="pill timer" id="timer">00:00</span>
-      </div>
+  <div id="hud" aria-live="polite">
+    <div id="left">
+      <div class="chip pending" id="chip-hiro"><span class="dot"></span><span>Hiro</span></div>
+      <div class="chip pending" id="chip-kanji"><span class="dot"></span><span>Kanji</span></div>
+      <div class="chip pending" id="chip-letter"><span class="dot"></span><span>Letra A</span></div>
     </div>
-    <div class="help">
-      <div class="card muted">Apuntá a los marcadores impresos. Si ves fondo negro, cambiá de cámara.</div>
+    <div id="timer">00:00</div>
+    <div id="right">
+      <a class="btn" target="_blank" rel="noopener" href="https://commons.wikimedia.org/wiki/File:Hiro_Kanji_3Markers.pdf">📥 PDF marcadores</a>
+      <button id="btnReset">↺ Reiniciar</button>
     </div>
   </div>
 
-  <!-- Feedback final -->
-  <div class="final" id="final">
+  <!-- Mensaje de victoria -->
+  <div id="win">
     <div class="box">
-      <h2>🎉 ¡Tesoro encontrado! 🎉</h2>
-      <p>Tiempo total: <b id="finalTime">--:--</b></p>
-      <button class="btn" onclick="document.getElementById('final').classList.remove('show')">Cerrar</button>
+      <div class="big">🎉</div>
+      <h2>¡Tesoro descubierto!</h2>
+      <p id="winTime" style="margin:.2rem 0 .6rem;opacity:.9"></p>
+      <p style="opacity:.9">Escaneá de nuevo o tocá <strong>Reiniciar</strong> para volver a empezar.</p>
     </div>
   </div>
+
+  <div id="tips">💡 Si la cámara se ve negra, cerrá otras apps que usen la cámara y recargá la página.</div>
+
+  <!-- Escena AR -->
+  <a-scene
+    vr-mode-ui="enabled: false"
+    renderer="alpha: true; antialias: true; logarithmicDepthBuffer: true"
+    embedded
+    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;" >
+
+    <!-- Luz general para colores vivos en móviles -->
+    <a-entity light="type: ambient; intensity: 0.9"></a-entity>
+    <a-entity light="type: directional; intensity: 0.8" position="-1 1 0"></a-entity>
+
+    <!-- Marcador 1: HIRO (presentación) -->
+    <a-marker id="marker-hiro" preset="hiro">
+      <a-entity position="0 0 0">
+        <a-box depth="0.2" height="0.2" width="0.2" color="#29b6f6" position="0 0.1 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear"></a-box>
+        <a-text value="Bienvenido\nEscaneá los otros\nmarcadores" align="center" color="#ffffff" position="0 0.05 0" rotation="-90 0 0" width="1.8"></a-text>
+      </a-entity>
+    </a-marker>
+
+    <!-- Marcador 2: KANJI (pista 1) -->
+    <a-marker id="marker-kanji" preset="kanji">
+      <a-entity position="0 0 0">
+        <a-torus-knot radius="0.2" radius-tubular="0.05" color="#f39c12" position="0 0.15 0" animation="property: rotation; to: 360 360 0; loop: true; dur: 4500; easing: linear"></a-torus-knot>
+        <a-text value="Pista 1:\nBuscá la letra secreta" align="center" color="#ffeaa7" position="0 0.02 0" rotation="-90 0 0" width="1.8"></a-text>
+      </a-entity>
+    </a-marker>
+
+    <!-- Marcador 3: Patrón adicional (Letra A) -->
+    <a-marker id="marker-letter" type="pattern" url="https://designheritage.mit.edu/_dh_debug/ARjs/ARjs_210212_nicolocarpignoli/three.js/examples/marker-training/examples/pattern-files/pattern-letterA.patt">
+      <a-entity position="0 0 0">
+        <a-sphere radius="0.12" color="#2ecc71" position="0 0.15 0"></a-sphere>
+        <a-box depth="0.02" height="0.02" width="0.6" color="#2ecc71" position="0 0.03 0" rotation="-90 0 0"></a-box>
+        <a-text value="Pista 2:\n¡Encontraste la letra!" align="center" color="#a3e4d7" position="0 0.02 0" rotation="-90 0 0" width="1.8"></a-text>
+      </a-entity>
+    </a-marker>
+
+    <!-- Cámara -->
+    <a-entity camera></a-entity>
+  </a-scene>
 
   <script>
-    // ===== Helpers UI =====
-    const $ = s => document.querySelector(s);
-    const log = msg => { console.log('[AR]', msg); const d=$('#diag'); if(d) d.textContent=msg; };
+    // Estado del juego
+    const state = {
+      started: false,
+      t0: 0,
+      timerRef: null,
+      found: { hiro:false, kanji:false, letter:false },
+      completed: false,
+      audioCtx: null
+    };
 
-    // ===== Estado de juego =====
-    const MARKERS = ['hiro','kanji','bc5']; // bc5 = barcode 5
-    const found = new Set();
-    let startTs = null, timerId = null;
-    function startTimer(){ if(startTs!==null) return; startTs=Date.now(); timerId=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000); $('#timer').textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},250); }
-    function stopTimer(){ if(timerId){ clearInterval(timerId); timerId = null; } }
-    function markFound(id){
-      if(found.has(id)) return;
-      found.add(id);
-      if(found.size===1) startTimer();
-      // Píldoras
-      const pill = id==='hiro' ? '#p-hiro' : id==='kanji' ? '#p-kanji' : '#p-bc5';
-      const dot = document.querySelector(pill + ' .dot');
-      if(dot){ dot.textContent = '✔'; dot.style.color='var(--ok)'; }
-      $('#progress').textContent = found.size;
-      // Sonidito (WebAudio) al encontrar
-      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime+0.02); o.start(); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.25); o.stop(ctx.currentTime+0.26);}catch(_){}
-      if(found.size===MARKERS.length){
-        stopTimer();
-        $('#finalTime').textContent = $('#timer').textContent;
-        $('#final').classList.add('show');
-      }
+    const $ = (sel) => document.querySelector(sel);
+
+    const updateChips = () => {
+      $("#chip-hiro").classList.toggle("found", state.found.hiro);
+      $("#chip-kanji").classList.toggle("found", state.found.kanji);
+      $("#chip-letter").classList.toggle("found", state.found.letter);
+      $("#chip-hiro").classList.toggle("pending", !state.found.hiro);
+      $("#chip-kanji").classList.toggle("pending", !state.found.kanji);
+      $("#chip-letter").classList.toggle("pending", !state.found.letter);
     }
 
-    // ===== Cámara =====
-    let chosenDeviceId = null;
-    async function listCameras(){
-      try{ await navigator.mediaDevices.getUserMedia({video:true}); } catch(_){}
-      const devs = await navigator.mediaDevices.enumerateDevices();
-      const cams = devs.filter(d=>d.kind==='videoinput');
-      const sel = $('#camSel'); sel.innerHTML='';
-      // Ordenar priorizando trasera por etiqueta
-      cams.sort((a,b)=> (/(back|rear|environment)/i.test(a.label)?-1:0) - (/(back|rear|environment)/i.test(b.label)?-1:0));
-      cams.forEach((c,i)=>{ const opt=document.createElement('option'); opt.value=c.deviceId; opt.textContent=c.label || `Cámara ${i+1}`; sel.appendChild(opt); });
-      if(cams.length){ chosenDeviceId = cams[0].deviceId; sel.value = chosenDeviceId; }
-      sel.addEventListener('change', e => chosenDeviceId = e.target.value);
-      return cams.length>0;
+    const fmt = (ms) => {
+      const s = Math.floor(ms / 1000);
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return String(m).padStart(2,'0') + ':' + String(r).padStart(2,'0');
     }
 
-    async function probe(deviceId){
-      // Abrimos un stream breve solo para validar que haya frames
-      const constraints = deviceId ? { video: { deviceId: { exact: deviceId } }, audio:false }
-                                   : { video: { facingMode: { ideal: 'environment' } }, audio:false };
-      const s = await navigator.mediaDevices.getUserMedia(constraints);
-      // Chequear que entregue video (onloadedmetadata)
-      const v = document.createElement('video');
-      v.muted = true; v.playsInline = true; v.autoplay = true;
-      v.srcObject = s; await v.play().catch(()=>{});
-      await new Promise((res,rej)=>{ let done=false; const to=setTimeout(()=>!done&&rej(new Error('timeout video')),3500); v.onloadedmetadata=()=>{ if(done) return; done=true; clearTimeout(to); res(); }; });
-      const ok = v.videoWidth>0 && v.videoHeight>0;
-      s.getTracks().forEach(t=>t.stop());
-      if(!ok) throw new Error('video sin frames');
+    const startTimer = () => {
+      state.t0 = Date.now();
+      $("#timer").textContent = '00:00';
+      clearInterval(state.timerRef);
+      state.timerRef = setInterval(() => {
+        if(!state.started || state.completed) return;
+        $("#timer").textContent = fmt(Date.now() - state.t0);
+      }, 200);
     }
 
-    // ===== AR Scene =====
-    function buildScene({ facingMode='environment', deviceId=null }={}){
-      // Limpieza previa si hubiera
-      const old = document.getElementById('scene');
-      if(old){ old.parentNode.removeChild(old); }
-
-      const scene = document.createElement('a-scene');
-      scene.setAttribute('id','scene');
-      scene.setAttribute('embedded','');
-      scene.setAttribute('renderer','antialias:true; alpha:false; precision:mediump; powerPreference:high-performance');
-
-      // AR.js config
-      // Usamos sourceType:webcam, detection mono + matrix (para barcode), y resoluciones típicas móviles
-      const base = `trackingMethod: best; sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth:1280; sourceHeight:720; displayWidth:1280; displayHeight:720; debugUIEnabled:false`;
-      // facingMode preferido; si hay deviceId lo dejamos a AR.js (usará el actual por permisos)
-      scene.setAttribute('arjs', `${base}; ${deviceId ? '' : ('facingMode:'+facingMode+';')}`);
-
-      // 3 marcadores con pistas distintas
-      scene.innerHTML = `
-        <a-marker id="m-hiro" preset="hiro" emitevents="true">
-          <a-box color="#fb923c" depth="0.3" height="0.3" width="0.3" position="0 0.3 0"></a-box>
-          <a-text value="Pista 1: Portón principal" color="#fff" position="0 0.75 0" scale="0.45 0.45 0.45" align="center"></a-text>
-        </a-marker>
-
-        <a-marker id="m-kanji" preset="kanji" emitevents="true">
-          <a-sphere color="#60a5fa" radius="0.22" position="0 0.28 0"></a-sphere>
-          <a-text value="Pista 2: Patio interior" color="#fff" position="0 0.75 0" scale="0.45 0.45 0.45" align="center"></a-text>
-        </a-marker>
-
-        <a-marker id="m-bc5" type="barcode" value="5" emitevents="true">
-          <a-cone color="#22c55e" position="0 0.3 0" radius-bottom="0.22" radius-top="0.05" height="0.42"></a-cone>
-          <a-text value="Pista 3: Biblioteca" color="#fff" position="0 0.78 0" scale="0.45 0.45 0.45" align="center"></a-text>
-        </a-marker>
-
-        <!-- Cámara -->
-        <a-entity camera></a-entity>
-      `;
-
-      // Eventos AR útiles
-      scene.addEventListener('arReady', ()=>log('AR listo'));
-      scene.addEventListener('arError', e=>log('AR error: '+(e?.detail?.message||'desconocido')));
-      scene.addEventListener('camera-init', ()=>log('Cámara inicializada por AR.js'));
-      scene.addEventListener('camera-error', ()=>log('AR.js no pudo abrir la cámara'));
-
-      scene.addEventListener('loaded', ()=>{
-        // Conectar detección de marcadores
-        const bind = (id, key) => {
-          const el = document.getElementById(id);
-          if(!el) return;
-          el.addEventListener('markerFound', ()=>markFound(key));
-        };
-        bind('m-hiro','hiro');
-        bind('m-kanji','kanji');
-        bind('m-bc5','bc5');
-      });
-
-      document.body.appendChild(scene);
-
-      // Resize estable
-      function safeResize(){ try{ scene && scene.resize && scene.resize(); } catch(_){ } }
-      window.addEventListener('resize', ()=>setTimeout(safeResize,180));
-      window.addEventListener('orientationchange', ()=>setTimeout(safeResize,260));
-    }
-
-    // ===== Flujo de arranque =====
-    async function init(){
-      // Contexto seguro recomendado
-      const secure = location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1';
-      if(!secure) log('Sugerencia: usá HTTPS/localhost para evitar bloqueos de cámara.');
-      await listCameras();
-    }
-
-    $('#btnStart').addEventListener('click', async ()=>{
-      const btn = $('#btnStart');
-      btn.disabled = true; btn.textContent = 'Chequeando cámara…';
+    const playWinSound = () => {
       try{
-        // Probar dispositivo elegido (si no hay, usar facingMode environment)
-        if(chosenDeviceId){ await probe(chosenDeviceId); }
-        else { await probe(null); }
+        const ctx = state.audioCtx || (state.audioCtx = new (window.AudioContext||window.webkitAudioContext)());
+        const now = ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+        notes.forEach((f,i)=>{
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0.0001, now + i*0.12);
+          g.gain.exponentialRampToValueAtTime(0.4, now + i*0.12 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i*0.12 + 0.35);
+          o.start(now + i*0.12); o.stop(now + i*0.12 + 0.36);
+        });
+      }catch(e){ /* no-op */ }
+    }
 
-        // Ocultar gate y construir escena (preferir environment; con deviceId también funciona)
-        $('#gate').style.display = 'none';
-        buildScene({ facingMode:'environment', deviceId: chosenDeviceId });
-
-      }catch(err){
-        console.error(err);
-        log('No se pudo abrir vídeo utilizable. Probá otra cámara o revisá permisos.');
-        btn.disabled = false; btn.textContent = 'Empezar';
+    const checkWin = () => {
+      if(state.completed) return;
+      if(state.found.hiro && state.found.kanji && state.found.letter){
+        state.completed = true;
+        const elapsed = Date.now() - state.t0;
+        $("#winTime").textContent = `Tiempo: ${fmt(elapsed)}`;
+        $("#win").style.display = 'grid';
+        playWinSound();
       }
+    }
+
+    const resetGame = () => {
+      state.started = false; state.completed = false; state.found = {hiro:false,kanji:false,letter:false};
+      updateChips();
+      $("#win").style.display = 'none';
+      $("#timer").textContent = '00:00';
+      $("#start").style.display = 'grid';
+    }
+
+    // Habilitar por gesto (audio y permisos) y arrancar timer
+    $("#btnStart").addEventListener('click', async () => {
+      try{ state.audioCtx = new (window.AudioContext||window.webkitAudioContext)(); await state.audioCtx.resume(); }catch(e){}
+      state.started = true; startTimer(); updateChips(); $("#start").style.display = 'none';
     });
 
-    init();
+    $("#btnReset").addEventListener('click', resetGame);
+
+    // Listeners markerFound / markerLost
+    const onFound = (key) => () => { if(!state.started) return; state.found[key] = true; updateChips(); checkWin(); };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      $("#marker-hiro").addEventListener('markerFound', onFound('hiro'));
+      $("#marker-kanji").addEventListener('markerFound', onFound('kanji'));
+      $("#marker-letter").addEventListener('markerFound', onFound('letter'));
+      // Opcional: podés escuchar markerLost si querés feedback adicional
+      // $("#marker-hiro").addEventListener('markerLost', () => console.log('Hiro perdido'))
+    });
   </script>
 </body>
 </html>
