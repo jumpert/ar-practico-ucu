@@ -79,16 +79,17 @@
 
   <!-- Escena AR -->
   <a-scene
+    id="scene"
     vr-mode-ui="enabled: false"
     renderer="antialias: true; logarithmicDepthBuffer: true"
     embedded
     arjs="sourceType: webcam; videoTexture: true; trackingMethod: best; debugUIEnabled: false;">
-    <!-- Luz general para colores vivos en móviles -->
+    
     <a-entity light="type: ambient; intensity: 0.9"></a-entity>
     <a-entity light="type: directional; intensity: 0.8" position="-1 1 0"></a-entity>
 
-    <!-- Marcador 1: HIRO (presentación) -->
-    <a-marker id="marker-hiro" preset="hiro">
+    <!-- Marcador 1 -->
+    <a-marker id="marker-hiro" preset="hiro" emitevents="true">
       <a-entity position="0 0 0">
         <a-box depth="0.2" height="0.2" width="0.2" color="#29b6f6" position="0 0.1 0"
                animation="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear"></a-box>
@@ -97,8 +98,8 @@
       </a-entity>
     </a-marker>
 
-    <!-- Marcador 2: KANJI (pista 1) -->
-    <a-marker id="marker-kanji" preset="kanji">
+    <!-- Marcador 2 -->
+    <a-marker id="marker-kanji" preset="kanji" emitevents="true">
       <a-entity position="0 0 0">
         <a-torus-knot radius="0.2" radius-tubular="0.05" color="#f39c12" position="0 0.15 0"
                       animation="property: rotation; to: 360 360 0; loop: true; dur: 4500; easing: linear"></a-torus-knot>
@@ -107,8 +108,10 @@
       </a-entity>
     </a-marker>
 
-    <!-- Marcador 3: Patrón adicional (Letra A) -->
-    <a-marker id="marker-ar" type="pattern" url="https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/examples/marker-training/examples/pattern-files/pattern-AR.patt">
+    <!-- Marcador 3 (patrón AR) -->
+    <a-marker id="marker-ar" type="pattern" emitevents="true"
+      url="markers/pattern-AR.patt">
+      <!-- Consejo: poné este .patt en /markers de tu propio repo -->
       <a-entity position="0 0 0">
         <a-sphere radius="0.12" color="#2ecc71" position="0 0.15 0"></a-sphere>
         <a-box depth="0.02" height="0.02" width="0.6" color="#2ecc71" position="0 0.03 0" rotation="-90 0 0"></a-box>
@@ -117,104 +120,39 @@
       </a-entity>
     </a-marker>
 
-    <!-- Cámara -->
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
     // Estado del juego
     const state = {
-      started: false,
-      t0: 0,
-      timerRef: null,
+      started: false, t0: 0, timerRef: null,
       found: { hiro:false, kanji:false, ar:false },
-      completed: false,
-      audioCtx: null
+      completed: false, audioCtx: null
     };
+    const $ = (s)=>document.querySelector(s);
+    const fmt = (ms)=>{ const s=Math.floor(ms/1000), m=Math.floor(s/60), r=s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`; };
+    const updateChips=()=>{["hiro","kanji","ar"].forEach(k=>{ const el=$(`#chip-${k}`); el.classList.toggle("found", state.found[k]); el.classList.toggle("pending", !state.found[k]); });};
+    const startTimer=()=>{ state.t0=Date.now(); $("#timer").textContent="00:00"; clearInterval(state.timerRef);
+      state.timerRef=setInterval(()=>{ if(!state.started||state.completed)return; $("#timer").textContent=fmt(Date.now()-state.t0); },200); };
+    const playWinSound=()=>{ try{ const ctx=state.audioCtx||(state.audioCtx=new (window.AudioContext||window.webkitAudioContext)()); const now=ctx.currentTime; [523.25,659.25,783.99,1046.5].forEach((f,i)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, now+i*0.12); g.gain.exponentialRampToValueAtTime(0.4, now+i*0.12+0.02); g.gain.exponentialRampToValueAtTime(0.001, now+i*0.12+0.35); o.start(now+i*0.12); o.stop(now+i*0.12+0.36); }); }catch(e){} };
+    const checkWin=()=>{ if(state.completed)return; if(state.found.hiro&&state.found.kanji&&state.found.ar){ state.completed=true; $("#winTime").textContent=`Tiempo: ${fmt(Date.now()-state.t0)}`; $("#win").style.display='grid'; playWinSound(); } };
+    const resetGame=()=>{ state.started=false; state.completed=false; state.found={hiro:false,kanji:false,ar:false}; updateChips(); $("#win").style.display='none'; $("#timer").textContent='00:00'; $("#start").style.display='grid'; };
 
-    const $ = (sel) => document.querySelector(sel);
-
-    const updateChips = () => {
-      $("#chip-hiro").classList.toggle("found", state.found.hiro);
-      $("#chip-kanji").classList.toggle("found", state.found.kanji);
-      $("#chip-ar").classList.toggle("found", state.found.ar);
-      $("#chip-hiro").classList.toggle("pending", !state.found.hiro);
-      $("#chip-kanji").classList.toggle("pending", !state.found.kanji);
-      $("#chip-ar").classList.toggle("pending", !state.found.ar);
-    }
-
-    const fmt = (ms) => {
-      const s = Math.floor(ms / 1000);
-      const m = Math.floor(s / 60);
-      const r = s % 60;
-      return String(m).padStart(2,'0') + ':' + String(r).padStart(2,'0');
-    }
-
-    const startTimer = () => {
-      state.t0 = Date.now();
-      $("#timer").textContent = '00:00';
-      clearInterval(state.timerRef);
-      state.timerRef = setInterval(() => {
-        if(!state.started || state.completed) return;
-        $("#timer").textContent = fmt(Date.now() - state.t0);
-      }, 200);
-    }
-
-    const playWinSound = () => {
-      try{
-        const ctx = state.audioCtx || (state.audioCtx = new (window.AudioContext||window.webkitAudioContext)());
-        const now = ctx.currentTime;
-        const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
-        notes.forEach((f,i)=>{
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
-          g.gain.setValueAtTime(0.0001, now + i*0.12);
-          g.gain.exponentialRampToValueAtTime(0.4, now + i*0.12 + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.001, now + i*0.12 + 0.35);
-          o.start(now + i*0.12); o.stop(now + i*0.12 + 0.36);
-        });
-      }catch(e){ /* no-op */ }
-    }
-
-    const checkWin = () => {
-      if(state.completed) return;
-      if(state.found.hiro && state.found.kanji && state.found.ar){
-        state.completed = true;
-        const elapsed = Date.now() - state.t0;
-        $("#winTime").textContent = `Tiempo: ${fmt(elapsed)}`;
-        $("#win").style.display = 'grid';
-        playWinSound();
-      }
-    }
-
-    const resetGame = () => {
-      state.started = false;
-      state.completed = false;
-      state.found = { hiro:false, kanji:false, ar:false }; // FIX: 'ar' en lugar de 'letter'
-      updateChips();
-      $("#win").style.display = 'none';
-      $("#timer").textContent = '00:00';
-      $("#start").style.display = 'grid';
-    }
-
-    // Habilitar por gesto (audio y permisos) y arrancar timer
-    $("#btnStart").addEventListener('click', async () => {
-      try{ state.audioCtx = new (window.AudioContext||window.webkitAudioContext)(); await state.audioCtx.resume(); }catch(e){}
-      state.started = true; startTimer(); updateChips(); $("#start").style.display = 'none';
-    });
-
+    $("#btnStart").addEventListener('click', async ()=>{ try{ state.audioCtx=new (window.AudioContext||window.webkitAudioContext)(); await state.audioCtx.resume(); }catch(e){} state.started=true; startTimer(); updateChips(); $("#start").style.display='none'; });
     $("#btnReset").addEventListener('click', resetGame);
 
-    // Listeners markerFound / markerLost
-    const onFound = (key) => () => { if(!state.started) return; state.found[key] = true; updateChips(); checkWin(); };
+    // Enganchar listeners cuando la escena terminó de cargar
+    const onFound = (key)=>()=>{ if(!state.started) return; state.found[key]=true; updateChips(); checkWin(); };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      $("#marker-hiro").addEventListener('markerFound', onFound('hiro'));
-      $("#marker-kanji").addEventListener('markerFound', onFound('kanji'));
-      $("#marker-ar").addEventListener('markerFound', onFound('ar'));
-      // Opcional: podés escuchar markerLost si querés feedback adicional
-      // $("#marker-hiro").addEventListener('markerLost', () => console.log('Hiro perdido'))
+    const scene = document.getElementById('scene');
+    scene.addEventListener('loaded', ()=>{
+      $("#marker-hiro") ?.addEventListener('markerFound', onFound('hiro'));
+      $("#marker-kanji")?.addEventListener('markerFound', onFound('kanji'));
+      $("#marker-ar")   ?.addEventListener('markerFound', onFound('ar'));
+      // Si querés feedback adicional:
+      // $("#marker-hiro").addEventListener('markerLost', ()=> console.log('Hiro perdido'));
     });
   </script>
 </body>
