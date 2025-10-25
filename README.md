@@ -12,24 +12,25 @@ Aplicación web de realidad aumentada construida con A-Frame + AR.js para la act
 
 1. Abre `index.html` desde un servidor web (por ejemplo `npx serve .`).
 2. Concede permiso de cámara cuando el navegador lo solicite.
-3. Escanea los marcadores en el siguiente orden para seguir las pistas:
+3. Imprime los tres marcadores oficiales de AR.js y escanéalos en el siguiente orden para seguir las pistas:
 
-   | Marcador | Archivo patrón | Archivo para imprimir | Descripción |
-   |----------|----------------|-----------------------|-------------|
-   | marker-1 | `assets/patt/marker1.patt` | `assets/markers/marker1.svg` | Punto de inicio. Activa la interfaz y muestra la primera pista. |
-   | marker-2 | `assets/patt/marker2.patt` | `assets/markers/marker2.svg` | Llave mágica. Avanza la historia con nuevas pistas. |
-   | marker-3 | `assets/patt/marker3.patt` | `assets/markers/marker3.svg` | Cofre del tesoro. Completa la misión y dispara la celebración final. |
+   | Marcador | Tipo | Imagen de referencia | Descripción |
+   |----------|------|----------------------|-------------|
+   | Hiro | `preset="hiro"` | ![Hiro](https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-training/examples/HIRO.jpg) | Punto de inicio. Activa la interfaz y muestra la primera pista. |
+   | Kanji | `preset="kanji"` | ![Kanji](https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-training/examples/kanji.jpg) | Llave mágica. Avanza la historia con nuevas pistas. |
+   | Código #5 | `type="barcode" value="5"` | ![Código 5](https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-barcode/markers/5.png) | Cofre del tesoro. Completa la misión y dispara la celebración final. |
 
 4. Después de escanear los tres marcadores aparecerá un mensaje final con opción de reiniciar la experiencia.
 
 ## Desarrollo
 
-- El código principal de la lógica del juego está en `js/game.js`.
-- Los modelos AR se definen en `index.html` dentro de cada elemento `<a-marker>`.
-- Los marcadores están disponibles como patrones (`.patt`) en `assets/patt` y como imágenes vectoriales (`.svg`) en `assets/markers`.
+- Toda la escena y la lógica del juego se encuentran ahora en `index.html` para simplificar la carga en dispositivos móviles.
+- Los modelos AR se definen dentro de cada elemento `<a-marker>` utilizando los presets nativos de AR.js (Hiro y Kanji) y un marcador tipo código (valor 5).
+- La lógica de UI, audio y celebración está escrita en JavaScript in-line al final del documento para garantizar que el navegador la ejecute una vez que se cargó la escena.
 
 ## Solución de problemas
 
-- **No detecta los marcadores:** asegúrate de usar los patrones proporcionados y mantenerlos planos frente a la cámara, con buena iluminación.
+- **No detecta los marcadores:** asegúrate de usar los patrones oficiales incluidos arriba y mantenerlos planos frente a la cámara, con buena iluminación.
+- **Marcador de código no responde:** verifica que el entorno tenga suficiente luz y que el marcador esté impreso sin distorsiones. El modo `mono_and_matrix` ya está habilitado para detectar tanto patrones como códigos.
 - **No se escucha el audio:** toca la pantalla cuando aparezca el mensaje "Toca la pantalla para activar el sonido" para desbloquear el contexto de audio del navegador.
 - **Pantalla en negro:** verifica que el navegador tenga permiso de cámara y que estés sirviendo el sitio por HTTPS (necesario en la mayoría de dispositivos móviles).
