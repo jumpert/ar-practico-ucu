@@ -307,17 +307,17 @@
       btn.textContent = 'Abriendo cámara…';
       $('#loader').style.display = 'flex';
       $('#loaderMsg').innerHTML = 'Inicializando cámara…';
-
       try {
         await ensureCameraPermission();
         buildScene();
-        // Ocultar botón tras iniciar
         btn.style.display = 'none';
+        $('.help .muted').style.display = 'none';
       } catch (err) {
-        // Si falló, permitir reintento
+        console.error('Error al iniciar cámara:', err);
         btn.disabled = false;
         btn.textContent = 'Activar cámara';
       }
+
     });
   </script>
 </body>
