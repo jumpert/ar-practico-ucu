@@ -3,119 +3,57 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>AR Treasure Hunt — Sacré Coeur</title>
 
-  <!-- A-Frame + AR.js -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
 
   <style>
-    :root {
-      --bg: #0b1020;
-      --fg: #e7eefb;
-      --muted: #97a3b6;
-      --brand: #0ea5e9;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      font-family: system-ui, Segoe UI, Roboto, Inter, Arial;
-      color: var(--fg);
-      overflow: hidden;
-    }
-    .arjs-loader {
-      position: fixed;
-      inset: 0;
-      background: #000c;
-      display: none;            /* Oculto hasta que realmente arranque la cámara */
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-    .arjs-loader div {
-      color: #fff;
-      font-size: 1.1rem;
-      text-align: center;
-      max-width: 90vw;
-      line-height: 1.4;
-    }
-    .hud {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 9990;
-    }
-    .card {
-      pointer-events: auto;
-      backdrop-filter: blur(8px);
-      background: rgba(11,16,32,0.6);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 10px 12px;
-      color: var(--fg);
-    }
-    .top {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      top: 12px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .title { font-weight: 700; }
-    .muted { color: var(--muted); font-size: 0.9rem; }
-    .pills { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .pill {
-      display: inline-flex; gap: 6px; align-items: center;
-      border-radius: 999px; padding: 6px 10px;
-      border: 1px solid rgba(255,255,255,0.12);
-    }
-    .pill .dot { font-weight: 700; }
-    .timer { font-variant-numeric: tabular-nums; }
-    .help {
-      position: absolute;
-      right: 12px;
-      bottom: 12px;
-      max-width: min(92vw, 460px);
-    }
-    .btn {
-      appearance: none; border: none; border-radius: 12px;
-      padding: 10px 14px;
-      background: linear-gradient(135deg, var(--brand), #6366f1);
-      color: #fff; font-weight: 600; cursor: pointer;
-    }
-    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
-    .final {
-      position: fixed; inset: 0; display: none;
-      align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.65); z-index: 10000;
-    }
-    .final.show { display: flex; }
-    .final .box {
-      background: linear-gradient(180deg, rgba(15,23,42,0.92), rgba(15,23,42,0.78));
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 16px; padding: 22px 20px;
-      width: min(92vw, 560px); color: #fff; text-align: center;
-    }
+    :root { --fg:#e7eefb; --muted:#97a3b6; --ok:#22c55e; }
+    html,body{margin:0;padding:0;background:#000;font-family:system-ui,Segoe UI,Roboto,Inter,Arial;color:var(--fg);overflow:hidden}
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999}
+    .panel{background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 14px;max-width:min(92vw,560px)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .btn{appearance:none;border:none;border-radius:10px;padding:10px 14px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-weight:600;cursor:pointer}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    select{padding:8px;border-radius:8px;background:#10172a;color:#fff;border:1px solid rgba(255,255,255,.12)}
+    .hud{position:fixed;inset:0;pointer-events:none;z-index:9990}
+    .top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .card{pointer-events:auto;background:rgba(11,16,32,.6);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px}
+    .muted{color:var(--muted);font-size:.9rem}
+    .pills{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:6px 10px;border:1px solid rgba(255,255,255,.12)}
+    .pill .dot{font-weight:700}
+    .timer{font-variant-numeric:tabular-nums}
+    .help{position:absolute;right:12px;bottom:12px;max-width:min(92vw,460px)}
+    .final{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:10000}
+    .final.show{display:flex}
+    .final .box{background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.78));border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:22px 20px;width:min(92vw,560px);color:#fff;text-align:center}
+    /* Vídeo de prueba (solo se ve si se destapa debug) */
+    #probeVideo{position:fixed;right:8px;bottom:8px;width:160px;height:90px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.2);display:none;z-index:9991}
   </style>
 </head>
 <body>
-  <!-- Loader solo cuando realmente se está inicializando la cámara -->
-  <div class="arjs-loader" id="loader">
-    <div id="loaderMsg">Inicializando cámara…<br>Si es la primera vez, aceptá el permiso de cámara.</div>
+  <!-- Arranque / permiso / selección de cámara -->
+  <div class="overlay" id="gate">
+    <div class="panel">
+      <div id="gateMsg">Para comenzar, elegí la cámara y activá el acceso. (Recomendado abrir por <b>HTTPS</b> o <b>localhost</b>)</div>
+      <div class="row">
+        <label for="camSel">Cámara:</label>
+        <select id="camSel"><option value="">(buscando…)</option></select>
+        <button class="btn" id="btnStart">Activar cámara</button>
+      </div>
+      <div class="row">
+        <small class="muted" id="diag"></small>
+      </div>
+    </div>
   </div>
 
   <!-- HUD -->
   <div class="hud">
     <div class="top">
       <div class="card">
-        <div class="title">Búsqueda del Tesoro — Sacré Coeur</div>
         <div class="muted">Progreso <span id="progressCount">0</span>/3</div>
       </div>
       <div class="card pills">
@@ -127,10 +65,7 @@
     </div>
     <div class="help">
       <div class="card">
-        <div class="muted">
-          Apuntá la cámara a los marcadores: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode 5</b>
-        </div>
-        <button class="btn" id="btnStart">Activar cámara</button>
+        <div class="muted">Apuntá la cámara a los marcadores: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode 5</b></div>
       </div>
     </div>
   </div>
@@ -144,181 +79,169 @@
     </div>
   </div>
 
-  <!-- La escena se inyecta dinámicamente luego del permiso -->
+  <!-- Vídeo de prueba (para descartar fondo negro por stream nulo). Si querés, activá línea display:block. -->
+  <video id="probeVideo" playsinline muted autoplay></video>
+
+  <!-- La escena AR se inyecta luego del OK real de cámara -->
   <script>
-    const $ = (s) => document.querySelector(s);
+    const $ = s => document.querySelector(s);
+    const diag = msg => { const el = $('#diag'); if (el) el.textContent = msg; console.log('[AR-DIAG]', msg); };
 
-    // === Estado y utilidades ===
-    const markers = ['m-hiro', 'm-kanji', 'm-bar5'];
+    // ====== Estado ======
+    const markers = ['m-hiro','m-kanji','m-bar5'];
     const found = new Set();
-
     let startTs = null, tId = null, sceneBuilt = false, sceneEl = null;
+    let chosenDeviceId = null;
 
-    function startTimer() {
-      if (startTs !== null) return;
-      startTs = Date.now();
-      tId = setInterval(() => {
-        const s = Math.floor((Date.now() - startTs) / 1000);
-        $('#timer').textContent =
-          `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-      }, 250);
+    // ====== HUD & Timer ======
+    function startTimer(){ if(startTs!==null) return; startTs=Date.now(); tId=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000); $('#timer').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},250);}
+    function stopTimer(){ if(tId){clearInterval(tId); tId=null;} }
+    function updateHUD(){ $('#progressCount').textContent=found.size; for(const id of markers){const pill=$('#status-'+id); const dot=pill&&pill.querySelector('.dot'); if(dot&&found.has(id)){dot.textContent='✔'; dot.style.color='var(--ok)';}}}
+    function onFound(id){
+      if(found.has(id)) return;
+      found.add(id); updateHUD();
+      if(found.size===1) startTimer();
+      if('vibrate' in navigator) navigator.vibrate(60);
+      if(found.size===markers.length){
+        stopTimer();
+        $('#finalTime').textContent=$('#timer').textContent;
+        $('#final').classList.add('show');
+        try{localStorage.setItem('sacre_ar_last',JSON.stringify({done:true,time:$('#timer').textContent,at:new Date().toISOString()}));}catch(_){}
+      }
     }
-    function stopTimer() {
-      if (tId) { clearInterval(tId); tId = null; }
+
+    // ====== Utils cámara ======
+    async function listCameras(){
+      try{
+        await navigator.mediaDevices.getUserMedia({video:true}); // para poder obtener labels
+      }catch(_){}
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const cams = devs.filter(d=>d.kind==='videoinput');
+      const sel = $('#camSel'); sel.innerHTML='';
+      // Intentar trasera primero por label
+      const backFirst = [...cams].sort((a,b)=>{
+        const ab = /back|rear|environment/i.test(a.label) ? -1 : 0;
+        const bb = /back|rear|environment/i.test(b.label) ? -1 : 0;
+        return ab-bb;
+      });
+      backFirst.forEach((c,i)=>{
+        const opt=document.createElement('option');
+        opt.value=c.deviceId;
+        opt.textContent=c.label||`Cámara ${i+1}`;
+        sel.appendChild(opt);
+      });
+      if(backFirst.length){ chosenDeviceId=backFirst[0].deviceId; sel.value=chosenDeviceId; }
+      sel.addEventListener('change',e=>{ chosenDeviceId=e.target.value; });
+      return backFirst;
     }
-    function updateHUD() {
-      $('#progressCount').textContent = found.size;
-      for (const id of markers) {
-        const pill = document.getElementById('status-' + id);
-        const dot = pill && pill.querySelector('.dot');
-        if (dot && found.has(id)) {
-          dot.textContent = '✔';
-          dot.style.color = 'var(--ok)';
+
+    // Verifica que el stream entrega frames (evita “fondo negro” por stream sin datos)
+    async function probeCamera(deviceId){
+      const pv = $('#probeVideo');
+      const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }, audio:false };
+      let stream;
+      try{
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      }catch(err){
+        diag('No fue posible abrir la cámara seleccionada. Intento con frontal…');
+        // fallback a frontal
+        try{
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio:false });
+        }catch(err2){
+          throw err2;
         }
       }
-    }
-    function onFound(id) {
-      if (found.has(id)) return;
-      found.add(id);
-      updateHUD();
-
-      // Iniciar timer al encontrar el primer marcador (métrica más justa)
-      if (found.size === 1) startTimer();
-
-      if ('vibrate' in navigator) navigator.vibrate(60);
-
-      if (found.size === markers.length) {
-        stopTimer();
-        const tt = $('#timer').textContent;
-        // Mostrar tesoro en el origen de la cámara
-        const treasure = document.getElementById('treasure');
-        if (treasure) treasure.setAttribute('visible', true);
-
-        $('#finalTime').textContent = tt;
-        $('#final').classList.add('show');
-        try {
-          localStorage.setItem('sacre_ar_last', JSON.stringify({ done: true, time: tt, at: new Date().toISOString() }));
-        } catch (e) {}
-      }
+      pv.srcObject = stream;
+      pv.play().catch(()=>{});
+      // Esperar a que cargue metadatos y haya tamaño > 0
+      await new Promise((res,rej)=>{
+        let done=false;
+        const to=setTimeout(()=>{ if(!done) rej(new Error('timeout-video')); }, 4000);
+        pv.onloadedmetadata=()=>{ if(done) return; done=true; clearTimeout(to); res(); };
+      });
+      if (!pv.videoWidth || !pv.videoHeight){ throw new Error('video-without-frames'); }
+      // Ocultar el video de prueba (destapalo si querés ver el feed crudo)
+      pv.style.display='none'; 
+      // Parar tracks (AR.js abrirá su propio stream)
+      stream.getTracks().forEach(t=>t.stop());
+      return true;
     }
 
-    // === Construcción dinámica de la escena (tras permiso concedido) ===
-    function buildScene() {
-      if (sceneBuilt) return;
-      sceneBuilt = true;
-
+    // ====== Construir escena AR sólo si la cámara es válida ======
+    function buildScene(){
+      if(sceneBuilt) return; sceneBuilt=true;
       sceneEl = document.createElement('a-scene');
-      sceneEl.setAttribute('id', 'scene');
-      sceneEl.setAttribute('vr-mode-ui', 'enabled:false');
-      sceneEl.setAttribute('renderer', 'antialias:true; alpha:true; precision:mediump; powerPreference:high-performance');
-      sceneEl.setAttribute('embedded', '');
-      sceneEl.setAttribute('arjs',
-        'trackingMethod: best; sourceType: webcam; facingMode: environment; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled:false');
+      sceneEl.setAttribute('id','scene');
+      // alpha:false evita transparencia total negra en algunos móviles
+      sceneEl.setAttribute('renderer','antialias:true; alpha:false; precision:mediump; powerPreference:high-performance');
+      sceneEl.setAttribute('embedded','');
+
+      // Config AR.js: fijamos tamaños comunes 1280x720 para móviles y detection mono+matrix
+      // facingMode environment ayuda, pero ya probamos la cámara antes
+      sceneEl.setAttribute('arjs','trackingMethod: best; sourceType: webcam; facingMode: environment; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth:1280; sourceHeight:720; displayWidth:1280; displayHeight:720; debugUIEnabled:false');
 
       sceneEl.innerHTML = `
         <a-marker id="m-hiro" preset="hiro" emitevents="true">
           <a-box color="#f97316" depth="0.3" height="0.3" width="0.3" position="0 0.3 0"></a-box>
           <a-text value="Pista 1" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
         </a-marker>
-
         <a-marker id="m-kanji" preset="kanji" emitevents="true">
           <a-sphere color="#3b82f6" radius="0.2" position="0 0.3 0"></a-sphere>
           <a-text value="Pista 2" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
         </a-marker>
-
         <a-marker id="m-bar5" type="barcode" value="5" emitevents="true">
           <a-cone color="#22c55e" position="0 0.3 0" radius-bottom="0.2" radius-top="0.05" height="0.4"></a-cone>
           <a-text value="Pista 3" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
         </a-marker>
-
-        <!-- Contenedor del tesoro (se muestra al completar) -->
-        <a-entity id="treasure" visible="false">
-          <a-box color="#f59e0b" depth="0.5" height="0.5" width="0.5" position="0 0.5 0"></a-box>
-          <a-text value="¡TESORO!" color="#f59e0b" position="0 1.2 0" scale="0.6 0.6 0.6" align="center"></a-text>
-        </a-entity>
-
         <a-entity camera></a-entity>
       `;
 
-      // Eventos de cámara/AR.js
-      sceneEl.addEventListener('camera-init', () => {
-        const loader = $('#loader');
-        if (loader) loader.style.display = 'none';
-      });
-      sceneEl.addEventListener('camera-error', (e) => {
-        const msg = $('#loaderMsg');
-        if (msg) {
-          msg.innerHTML = 'No se pudo acceder a la cámara.<br>Revisá los permisos del navegador, probá HTTPS y verificá que haya una cámara disponible.';
-        }
-      });
+      // Diagnóstico útil
+      sceneEl.addEventListener('arReady', ()=>diag('AR listo.'));
+      sceneEl.addEventListener('arError', e=>diag('Error AR: '+ (e?.detail?.message||'desconocido')));
+      sceneEl.addEventListener('camera-init', ()=>diag('Cámara inicializada por AR.js.'));
+      sceneEl.addEventListener('camera-error', e=>diag('AR.js no pudo abrir la cámara (revisá permisos/HTTPS).'));
 
-      // Una vez cargada la escena, conectamos listeners de marcadores
-      sceneEl.addEventListener('loaded', () => {
-        for (const id of markers) {
-          const el = document.getElementById(id);
-          if (el) el.addEventListener('markerFound', () => onFound(id));
+      sceneEl.addEventListener('loaded', ()=>{
+        for(const id of markers){
+          const el=document.getElementById(id);
+          if(el) el.addEventListener('markerFound', ()=>onFound(id));
         }
       });
 
       document.body.appendChild(sceneEl);
 
-      // Ajuste en cambios de tamaño/orientación
-      function safeResize() {
-        try { sceneEl && sceneEl.resize && sceneEl.resize(); } catch (e) {}
-      }
-      window.addEventListener('resize', () => setTimeout(safeResize, 200));
-      window.addEventListener('orientationchange', () => setTimeout(safeResize, 300));
+      function safeResize(){ try{ sceneEl && sceneEl.resize && sceneEl.resize(); }catch(_){ } }
+      window.addEventListener('resize', ()=>setTimeout(safeResize,200));
+      window.addEventListener('orientationchange', ()=>setTimeout(safeResize,300));
     }
 
-    // === Flujo de activación de cámara con gesto de usuario ===
-    async function ensureCameraPermission() {
-      // Recomendación: usar HTTPS o localhost
-      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      if (!isSecure) {
-        $('#loader').style.display = 'flex';
-        $('#loaderMsg').innerHTML = 'Para usar la cámara en móviles, abrí esta página con <b>HTTPS</b> o desde <b>localhost</b>.';
-        throw new Error('insecure-context');
+    // ====== Flujo principal ======
+    async function init(){
+      const secure = location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1';
+      if(!secure){
+        $('#gateMsg').innerHTML = 'Para usar la cámara en móviles, abrí esta página con <b>HTTPS</b> o desde <b>localhost</b>.';
       }
-
-      // Solicitar permiso explícitamente con gesto de usuario
-      const constraints = { video: { facingMode: { ideal: 'environment' } } };
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        // Liberar inmediatamente; AR.js abrirá otra vez sin pedir permiso
-        stream.getTracks().forEach(t => t.stop());
-      } catch (err) {
-        $('#loader').style.display = 'flex';
-        const msg = (err && err.name) || 'Error';
-        if (msg === 'NotAllowedError') {
-          $('#loaderMsg').innerHTML = 'No diste permiso de cámara.<br>Volvé a cargar la página y aceptá el permiso.';
-        } else if (msg === 'NotFoundError' || msg === 'OverconstrainedError') {
-          $('#loaderMsg').innerHTML = 'No se encontró una cámara utilizable en este dispositivo.';
-        } else {
-          $('#loaderMsg').innerHTML = 'Ocurrió un problema al iniciar la cámara.';
-        }
-        throw err;
-      }
+      await listCameras();
     }
 
-    // Botón de inicio
-    $('#btnStart').addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
-      btn.disabled = true;
-      btn.textContent = 'Abriendo cámara…';
-      $('#loader').style.display = 'flex';
-      $('#loaderMsg').innerHTML = 'Inicializando cámara…';
-      try {
-        await ensureCameraPermission();
+    $('#btnStart').addEventListener('click', async (e)=>{
+      const btn=e.currentTarget;
+      btn.disabled=true; btn.textContent='Comprobando cámara…';
+      diag('Abriendo stream de prueba…');
+      try{
+        await probeCamera(chosenDeviceId);
+        diag('OK cámara. Inicializando AR…');
+        $('#gate').style.display='none';
         buildScene();
-        btn.style.display = 'none';
-        $('.help .muted').style.display = 'none';
-      } catch (err) {
-        console.error('Error al iniciar cámara:', err);
-        btn.disabled = false;
-        btn.textContent = 'Activar cámara';
+      }catch(err){
+        console.error(err);
+        btn.disabled=false; btn.textContent='Activar cámara';
+        diag('No se pudo abrir un stream de video utilizable. Revisá permisos/HTTPS o probá otra cámara.');
       }
-
     });
+
+    init();
   </script>
 </body>
 </html>
