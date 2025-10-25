@@ -1,217 +1,324 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>AR Treasure — Sacré Coeur</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>AR Treasure Hunt — Sacré Coeur</title>
 
   <!-- A-Frame + AR.js -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
 
   <style>
-    body {
+    :root {
+      --bg: #0b1020;
+      --fg: #e7eefb;
+      --muted: #97a3b6;
+      --brand: #0ea5e9;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+    html, body {
       margin: 0;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
+      padding: 0;
       background: #000;
-    }
-
-    #ui {
-      position: fixed;
-      left: 10px;
-      top: 10px;
-      z-index: 9999;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1);
-      max-width: 300px;
-      transition: all 0.3s ease;
-    }
-
-    #progress {
-      margin: 8px 0;
-      height: 6px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 3px;
+      font-family: system-ui, Segoe UI, Roboto, Inter, Arial;
+      color: var(--fg);
       overflow: hidden;
     }
-
-    #progressBar {
-      height: 100%;
-      background: linear-gradient(90deg, #4CAF50, #8BC34A);
-      width: 0%;
-      transition: width 0.5s ease;
-    }
-
-    #finalOverlay {
+    .arjs-loader {
       position: fixed;
       inset: 0;
-      display: none;
+      background: #000c;
+      display: none;            /* Oculto hasta que realmente arranque la cámara */
       align-items: center;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      z-index: 10000;
-      flex-direction: column;
-      text-align: center;
-      padding: 20px;
-    }
-
-    #finalOverlay.show {
-      display: flex;
-      animation: fadeIn 0.5s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .celebration {
-      font-size: 4em;
-      margin-bottom: 20px;
-      animation: bounce 1s infinite alternate;
-    }
-
-    @keyframes bounce {
-      from { transform: scale(1); }
-      to { transform: scale(1.1); }
-    }
-
-    button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      border-radius: 8px;
-      border: none;
-      background: #4CAF50;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-
-    button:hover {
-      background: #45a049;
-    }
-
-    .marker-hint {
-      font-size: 12px;
-      opacity: 0.8;
-      margin-top: 8px;
-    }
-
-    #audioPrompt {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75);
-      color: #fff;
-      padding: 10px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.2);
-      font-size: 14px;
-      display: none;
       z-index: 9999;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     }
-
-    #audioPrompt.show {
-      display: block;
+    .arjs-loader div {
+      color: #fff;
+      font-size: 1.1rem;
+      text-align: center;
+      max-width: 90vw;
+      line-height: 1.4;
+    }
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9990;
+    }
+    .card {
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+      background: rgba(11,16,32,0.6);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: var(--fg);
+    }
+    .top {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .title { font-weight: 700; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .pills { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex; gap: 6px; align-items: center;
+      border-radius: 999px; padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .pill .dot { font-weight: 700; }
+    .timer { font-variant-numeric: tabular-nums; }
+    .help {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      max-width: min(92vw, 460px);
+    }
+    .btn {
+      appearance: none; border: none; border-radius: 12px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, var(--brand), #6366f1);
+      color: #fff; font-weight: 600; cursor: pointer;
+    }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    .final {
+      position: fixed; inset: 0; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65); z-index: 10000;
+    }
+    .final.show { display: flex; }
+    .final .box {
+      background: linear-gradient(180deg, rgba(15,23,42,0.92), rgba(15,23,42,0.78));
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 22px 20px;
+      width: min(92vw, 560px); color: #fff; text-align: center;
     }
   </style>
 </head>
-
 <body>
-  <div id="ui">
-    <div>🏴‍☠️ Marcadores encontrados: <span id="count">0</span>/3</div>
-    <div id="progress">
-      <div id="progressBar"></div>
+  <!-- Loader solo cuando realmente se está inicializando la cámara -->
+  <div class="arjs-loader" id="loader">
+    <div id="loaderMsg">Inicializando cámara…<br>Si es la primera vez, aceptá el permiso de cámara.</div>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="top">
+      <div class="card">
+        <div class="title">Búsqueda del Tesoro — Sacré Coeur</div>
+        <div class="muted">Progreso <span id="progressCount">0</span>/3</div>
+      </div>
+      <div class="card pills">
+        <span class="pill" id="status-m-hiro">Hiro <span class="dot">•</span></span>
+        <span class="pill" id="status-m-kanji">Kanji <span class="dot">•</span></span>
+        <span class="pill" id="status-m-bar5">Barcode 5 <span class="dot">•</span></span>
+        <span class="pill timer" id="timer">00:00</span>
+      </div>
     </div>
-    <div id="clues">Escanea el marcador inicial para comenzar la aventura...</div>
-    <div class="marker-hint" id="markerHint"></div>
+    <div class="help">
+      <div class="card">
+        <div class="muted">
+          Apuntá la cámara a los marcadores: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode 5</b>
+        </div>
+        <button class="btn" id="btnStart">Activar cámara</button>
+      </div>
+    </div>
   </div>
 
-  <div id="audioPrompt" role="status" aria-live="polite">
-    🔊 Toca la pantalla para activar el sonido.
+  <!-- Modal final -->
+  <div class="final" id="final">
+    <div class="box">
+      <h2>🎉 ¡Tesoro encontrado! 🎉</h2>
+      <p>Completaste las 3 pistas en <strong id="finalTime">--:--</strong>.</p>
+      <button class="btn" onclick="document.getElementById('final').classList.remove('show')">Cerrar</button>
+    </div>
   </div>
 
-  <div id="finalOverlay" role="dialog" aria-modal="true">
-    <div class="celebration">🎉✨</div>
-    <h1>¡Tesoro Encontrado!</h1>
-    <p>¡Felicidades! Has completado la búsqueda del tesoro del Sacré Coeur.</p>
-    <p>Entrega la URL y capturas a Bruno, Maxi y Gonzalo para tu evaluación.</p>
-    <button id="closeFinal">🔄 Jugar Nuevamente</button>
-  </div>
+  <!-- La escena se inyecta dinámicamente luego del permiso -->
+  <script>
+    const $ = (s) => document.querySelector(s);
 
-  <!-- Escena AR -->
-  <a-scene 
-    embedded 
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true;">
+    // === Estado y utilidades ===
+    const markers = ['m-hiro', 'm-kanji', 'm-bar5'];
+    const found = new Set();
 
-    <!-- Marcador 1 -->
-    <a-marker type="pattern"
-              url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-training/examples/pattern-files/pattern-hiro.patt"
-              id="marker-1">
-      <a-entity position="0 0.5 0">
-        <a-box position="0 0.2 0" color="#FF6B6B" width="0.4" height="0.4" depth="0.4"
-               animation="property: rotation; to: 0 360 0; loop: true; dur: 4000"></a-box>
-        <a-text value="INICIO" position="0 0.8 0" align="center" color="#FFF"
-                width="3" scale="2 2 2"></a-text>
-      </a-entity>
-    </a-marker>
+    let startTs = null, tId = null, sceneBuilt = false, sceneEl = null;
 
-    <!-- Marcador 2 -->
-    <a-marker type="pattern"
-              url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-training/examples/pattern-files/pattern-kanji.patt"
-              id="marker-2">
-      <a-entity position="0 0.3 0">
-        <a-entity position="0 0.2 0">
-          <a-cylinder position="0 0.1 0" color="#FFD700" radius="0.08" height="0.2"></a-cylinder>
-          <a-torus position="0 0.25 0" color="#FFD700" radius="0.1" radius-tubular="0.02" arc="360"></a-torus>
-          <a-box position="0.08 0 0" color="#FFD700" width="0.04" height="0.08" depth="0.04"></a-box>
-          <a-box position="0.04 -0.05 0" color="#FFD700" width="0.04" height="0.08" depth="0.04"></a-box>
-          <a-box position="0 -0.1 0" color="#FFD700" width="0.04" height="0.08" depth="0.04"></a-box>
+    function startTimer() {
+      if (startTs !== null) return;
+      startTs = Date.now();
+      tId = setInterval(() => {
+        const s = Math.floor((Date.now() - startTs) / 1000);
+        $('#timer').textContent =
+          `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+      }, 250);
+    }
+    function stopTimer() {
+      if (tId) { clearInterval(tId); tId = null; }
+    }
+    function updateHUD() {
+      $('#progressCount').textContent = found.size;
+      for (const id of markers) {
+        const pill = document.getElementById('status-' + id);
+        const dot = pill && pill.querySelector('.dot');
+        if (dot && found.has(id)) {
+          dot.textContent = '✔';
+          dot.style.color = 'var(--ok)';
+        }
+      }
+    }
+    function onFound(id) {
+      if (found.has(id)) return;
+      found.add(id);
+      updateHUD();
+
+      // Iniciar timer al encontrar el primer marcador (métrica más justa)
+      if (found.size === 1) startTimer();
+
+      if ('vibrate' in navigator) navigator.vibrate(60);
+
+      if (found.size === markers.length) {
+        stopTimer();
+        const tt = $('#timer').textContent;
+        // Mostrar tesoro en el origen de la cámara
+        const treasure = document.getElementById('treasure');
+        if (treasure) treasure.setAttribute('visible', true);
+
+        $('#finalTime').textContent = tt;
+        $('#final').classList.add('show');
+        try {
+          localStorage.setItem('sacre_ar_last', JSON.stringify({ done: true, time: tt, at: new Date().toISOString() }));
+        } catch (e) {}
+      }
+    }
+
+    // === Construcción dinámica de la escena (tras permiso concedido) ===
+    function buildScene() {
+      if (sceneBuilt) return;
+      sceneBuilt = true;
+
+      sceneEl = document.createElement('a-scene');
+      sceneEl.setAttribute('id', 'scene');
+      sceneEl.setAttribute('vr-mode-ui', 'enabled:false');
+      sceneEl.setAttribute('renderer', 'antialias:true; alpha:true; precision:mediump; powerPreference:high-performance');
+      sceneEl.setAttribute('embedded', '');
+      sceneEl.setAttribute('arjs',
+        'trackingMethod: best; sourceType: webcam; facingMode: environment; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled:false');
+
+      sceneEl.innerHTML = `
+        <a-marker id="m-hiro" preset="hiro" emitevents="true">
+          <a-box color="#f97316" depth="0.3" height="0.3" width="0.3" position="0 0.3 0"></a-box>
+          <a-text value="Pista 1" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
+        </a-marker>
+
+        <a-marker id="m-kanji" preset="kanji" emitevents="true">
+          <a-sphere color="#3b82f6" radius="0.2" position="0 0.3 0"></a-sphere>
+          <a-text value="Pista 2" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
+        </a-marker>
+
+        <a-marker id="m-bar5" type="barcode" value="5" emitevents="true">
+          <a-cone color="#22c55e" position="0 0.3 0" radius-bottom="0.2" radius-top="0.05" height="0.4"></a-cone>
+          <a-text value="Pista 3" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
+        </a-marker>
+
+        <!-- Contenedor del tesoro (se muestra al completar) -->
+        <a-entity id="treasure" visible="false">
+          <a-box color="#f59e0b" depth="0.5" height="0.5" width="0.5" position="0 0.5 0"></a-box>
+          <a-text value="¡TESORO!" color="#f59e0b" position="0 1.2 0" scale="0.6 0.6 0.6" align="center"></a-text>
         </a-entity>
 
-        <a-text value="LLAVE MÁGICA" position="0 0.8 0" align="center" color="#4ECDC4"></a-text>
-        <a-animation attribute="position" dur="2000" direction="alternate" repeat="indefinite"
-                    to="0 0.4 0"></a-animation>
-      </a-entity>
-    </a-marker>
+        <a-entity camera></a-entity>
+      `;
 
-    <!-- Marcador 3 -->
-    <a-marker type="pattern"
-              url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/marker-training/examples/pattern-files/pattern-letterA.patt"
-              id="marker-3">
-      <a-entity position="0 0.5 0">
-        <a-entity position="0 0.2 0">
-          <a-box position="0 0 0" color="#8B4513" width="0.6" height="0.3" depth="0.4"></a-box>
-          <a-box position="0 0.25 0" color="#A0522D" width="0.55" height="0.1" depth="0.35"
-                 rotation="-30 0 0"></a-box>
-          <a-box position="0 0.15 0.21" color="#D2691E" width="0.5" height="0.02" depth="0.02"></a-box>
-          <a-box position="0 0.15 -0.21" color="#D2691E" width="0.5" height="0.02" depth="0.02"></a-box>
-          <a-cylinder position="0 0.15 0" color="#FFD700" radius="0.05" height="0.02"></a-cylinder>
-          <a-cylinder position="0.1 0.35 0.1" color="#FFD700" radius="0.04" height="0.02" rotation="90 0 0"></a-cylinder>
-          <a-cylinder position="-0.1 0.35 -0.1" color="#FFD700" radius="0.04" height="0.02" rotation="90 0 0"></a-cylinder>
-          <a-cylinder position="0.15 0.4 -0.05" color="#FFD700" radius="0.04" height="0.02" rotation="90 0 0"></a-cylinder>
-        </a-entity>
+      // Eventos de cámara/AR.js
+      sceneEl.addEventListener('camera-init', () => {
+        const loader = $('#loader');
+        if (loader) loader.style.display = 'none';
+      });
+      sceneEl.addEventListener('camera-error', (e) => {
+        const msg = $('#loaderMsg');
+        if (msg) {
+          msg.innerHTML = 'No se pudo acceder a la cámara.<br>Revisá los permisos del navegador, probá HTTPS y verificá que haya una cámara disponible.';
+        }
+      });
 
-        <a-text value="TESORO" position="0 1.2 0" align="center" color="#FFD93D" scale="2 2 2"></a-text>
-        <a-light type="point" intensity="2" color="#FFD93D" position="0 1 0"></a-light>
-        <a-animation attribute="rotation" dur="8000" repeat="indefinite" to="0 360 0"></a-animation>
-      </a-entity>
-    </a-marker>
+      // Una vez cargada la escena, conectamos listeners de marcadores
+      sceneEl.addEventListener('loaded', () => {
+        for (const id of markers) {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('markerFound', () => onFound(id));
+        }
+      });
 
-    <a-entity camera></a-entity>
-  </a-scene>
+      document.body.appendChild(sceneEl);
 
-  <script src="./AR-main/js/game.js"></script>
+      // Ajuste en cambios de tamaño/orientación
+      function safeResize() {
+        try { sceneEl && sceneEl.resize && sceneEl.resize(); } catch (e) {}
+      }
+      window.addEventListener('resize', () => setTimeout(safeResize, 200));
+      window.addEventListener('orientationchange', () => setTimeout(safeResize, 300));
+    }
+
+    // === Flujo de activación de cámara con gesto de usuario ===
+    async function ensureCameraPermission() {
+      // Recomendación: usar HTTPS o localhost
+      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!isSecure) {
+        $('#loader').style.display = 'flex';
+        $('#loaderMsg').innerHTML = 'Para usar la cámara en móviles, abrí esta página con <b>HTTPS</b> o desde <b>localhost</b>.';
+        throw new Error('insecure-context');
+      }
+
+      // Solicitar permiso explícitamente con gesto de usuario
+      const constraints = { video: { facingMode: { ideal: 'environment' } } };
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Liberar inmediatamente; AR.js abrirá otra vez sin pedir permiso
+        stream.getTracks().forEach(t => t.stop());
+      } catch (err) {
+        $('#loader').style.display = 'flex';
+        const msg = (err && err.name) || 'Error';
+        if (msg === 'NotAllowedError') {
+          $('#loaderMsg').innerHTML = 'No diste permiso de cámara.<br>Volvé a cargar la página y aceptá el permiso.';
+        } else if (msg === 'NotFoundError' || msg === 'OverconstrainedError') {
+          $('#loaderMsg').innerHTML = 'No se encontró una cámara utilizable en este dispositivo.';
+        } else {
+          $('#loaderMsg').innerHTML = 'Ocurrió un problema al iniciar la cámara.';
+        }
+        throw err;
+      }
+    }
+
+    // Botón de inicio
+    $('#btnStart').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = 'Abriendo cámara…';
+      $('#loader').style.display = 'flex';
+      $('#loaderMsg').innerHTML = 'Inicializando cámara…';
+
+      try {
+        await ensureCameraPermission();
+        buildScene();
+        // Ocultar botón tras iniciar
+        btn.style.display = 'none';
+      } catch (err) {
+        // Si falló, permitir reintento
+        btn.disabled = false;
+        btn.textContent = 'Activar cámara';
+      }
+    });
+  </script>
 </body>
 </html>
