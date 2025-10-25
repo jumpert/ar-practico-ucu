@@ -3,241 +3,232 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>AR Treasure Hunt — Sacré Coeur</title>
 
+  <!-- A-Frame + AR.js (AR.js 3.4.7) -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
 
   <style>
-    :root { --fg:#e7eefb; --muted:#97a3b6; --ok:#22c55e; }
-    html,body{margin:0;padding:0;background:#000;font-family:system-ui,Segoe UI,Roboto,Inter,Arial;color:var(--fg);overflow:hidden}
-    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999}
-    .panel{background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 14px;max-width:min(92vw,560px)}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-    .btn{appearance:none;border:none;border-radius:10px;padding:10px 14px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-weight:600;cursor:pointer}
+    :root { --fg:#e7eefb; --muted:#97a3b6; --ok:#22c55e; --brand:#0ea5e9; }
+    html,body{margin:0;padding:0;background:#000;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Inter,Arial;overflow:hidden}
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:9999}
+    .panel{background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;max-width:min(92vw,560px)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+    .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;background:linear-gradient(135deg,var(--brand),#6366f1);color:#fff;font-weight:700;cursor:pointer}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
-    select{padding:8px;border-radius:8px;background:#10172a;color:#fff;border:1px solid rgba(255,255,255,.12)}
+    select{padding:8px;border-radius:10px;background:#0b1224;color:#fff;border:1px solid rgba(255,255,255,.16);min-width:220px}
+    .muted{color:var(--muted);font-size:.95rem}
     .hud{position:fixed;inset:0;pointer-events:none;z-index:9990}
     .top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .card{pointer-events:auto;background:rgba(11,16,32,.6);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px}
-    .muted{color:var(--muted);font-size:.9rem}
+    .card{pointer-events:auto;background:rgba(11,16,32,.58);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 12px}
     .pills{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:6px 10px;border:1px solid rgba(255,255,255,.12)}
-    .pill .dot{font-weight:700}
+    .pill .dot{font-weight:900}
     .timer{font-variant-numeric:tabular-nums}
-    .help{position:absolute;right:12px;bottom:12px;max-width:min(92vw,460px)}
+    .help{position:absolute;right:12px;bottom:12px;max-width:min(92vw,480px)}
     .final{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:10000}
     .final.show{display:flex}
-    .final .box{background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(15,23,42,.78));border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:22px 20px;width:min(92vw,560px);color:#fff;text-align:center}
-    /* Vídeo de prueba (solo se ve si se destapa debug) */
-    #probeVideo{position:fixed;right:8px;bottom:8px;width:160px;height:90px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.2);display:none;z-index:9991}
+    .final .box{background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.8));border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:22px 20px;width:min(92vw,560px);text-align:center}
   </style>
 </head>
 <body>
-  <!-- Arranque / permiso / selección de cámara -->
+  <!-- Pantalla de arranque: permiso + selección de cámara -->
   <div class="overlay" id="gate">
     <div class="panel">
-      <div id="gateMsg">Para comenzar, elegí la cámara y activá el acceso. (Recomendado abrir por <b>HTTPS</b> o <b>localhost</b>)</div>
+      <h3>Laboratorio: Búsqueda del Tesoro (AR.js)</h3>
+      <p class="muted">Abrí esta página por <b>HTTPS</b> o <b>localhost</b>. Elegí cámara y tocá <b>Empezar</b>.</p>
       <div class="row">
         <label for="camSel">Cámara:</label>
-        <select id="camSel"><option value="">(buscando…)</option></select>
-        <button class="btn" id="btnStart">Activar cámara</button>
+        <select id="camSel"><option value="">Buscando cámaras…</option></select>
+        <button class="btn" id="btnStart">Empezar</button>
       </div>
-      <div class="row">
-        <small class="muted" id="diag"></small>
-      </div>
+      <div class="row"><small class="muted" id="diag"></small></div>
+      <details style="margin-top:8px">
+        <summary>¿Cómo jugar?</summary>
+        <ul class="muted">
+          <li>Escaneá 3 marcadores: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode 5</b>.</li>
+          <li>Al ver cada marcador aparece una pista distinta.</li>
+          <li>Completá los 3 para revelar el <b>tesoro</b>.</li>
+        </ul>
+      </details>
     </div>
   </div>
 
   <!-- HUD -->
-  <div class="hud">
+  <div class="hud" aria-hidden="true">
     <div class="top">
       <div class="card">
-        <div class="muted">Progreso <span id="progressCount">0</span>/3</div>
+        <div class="muted">Progreso: <span id="progress">0</span>/3</div>
       </div>
       <div class="card pills">
-        <span class="pill" id="status-m-hiro">Hiro <span class="dot">•</span></span>
-        <span class="pill" id="status-m-kanji">Kanji <span class="dot">•</span></span>
-        <span class="pill" id="status-m-bar5">Barcode 5 <span class="dot">•</span></span>
+        <span class="pill" id="p-hiro">Hiro <span class="dot">•</span></span>
+        <span class="pill" id="p-kanji">Kanji <span class="dot">•</span></span>
+        <span class="pill" id="p-bc5">Barcode 5 <span class="dot">•</span></span>
         <span class="pill timer" id="timer">00:00</span>
       </div>
     </div>
     <div class="help">
-      <div class="card">
-        <div class="muted">Apuntá la cámara a los marcadores: <b>Hiro</b>, <b>Kanji</b> y <b>Barcode 5</b></div>
-      </div>
+      <div class="card muted">Apuntá a los marcadores impresos. Si ves fondo negro, cambiá de cámara.</div>
     </div>
   </div>
 
-  <!-- Modal final -->
+  <!-- Feedback final -->
   <div class="final" id="final">
     <div class="box">
       <h2>🎉 ¡Tesoro encontrado! 🎉</h2>
-      <p>Completaste las 3 pistas en <strong id="finalTime">--:--</strong>.</p>
+      <p>Tiempo total: <b id="finalTime">--:--</b></p>
       <button class="btn" onclick="document.getElementById('final').classList.remove('show')">Cerrar</button>
     </div>
   </div>
 
-  <!-- Vídeo de prueba (para descartar fondo negro por stream nulo). Si querés, activá línea display:block. -->
-  <video id="probeVideo" playsinline muted autoplay></video>
-
-  <!-- La escena AR se inyecta luego del OK real de cámara -->
   <script>
+    // ===== Helpers UI =====
     const $ = s => document.querySelector(s);
-    const diag = msg => { const el = $('#diag'); if (el) el.textContent = msg; console.log('[AR-DIAG]', msg); };
+    const log = msg => { console.log('[AR]', msg); const d=$('#diag'); if(d) d.textContent=msg; };
 
-    // ====== Estado ======
-    const markers = ['m-hiro','m-kanji','m-bar5'];
+    // ===== Estado de juego =====
+    const MARKERS = ['hiro','kanji','bc5']; // bc5 = barcode 5
     const found = new Set();
-    let startTs = null, tId = null, sceneBuilt = false, sceneEl = null;
-    let chosenDeviceId = null;
-
-    // ====== HUD & Timer ======
-    function startTimer(){ if(startTs!==null) return; startTs=Date.now(); tId=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000); $('#timer').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},250);}
-    function stopTimer(){ if(tId){clearInterval(tId); tId=null;} }
-    function updateHUD(){ $('#progressCount').textContent=found.size; for(const id of markers){const pill=$('#status-'+id); const dot=pill&&pill.querySelector('.dot'); if(dot&&found.has(id)){dot.textContent='✔'; dot.style.color='var(--ok)';}}}
-    function onFound(id){
+    let startTs = null, timerId = null;
+    function startTimer(){ if(startTs!==null) return; startTs=Date.now(); timerId=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000); $('#timer').textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},250); }
+    function stopTimer(){ if(timerId){ clearInterval(timerId); timerId = null; } }
+    function markFound(id){
       if(found.has(id)) return;
-      found.add(id); updateHUD();
+      found.add(id);
       if(found.size===1) startTimer();
-      if('vibrate' in navigator) navigator.vibrate(60);
-      if(found.size===markers.length){
+      // Píldoras
+      const pill = id==='hiro' ? '#p-hiro' : id==='kanji' ? '#p-kanji' : '#p-bc5';
+      const dot = document.querySelector(pill + ' .dot');
+      if(dot){ dot.textContent = '✔'; dot.style.color='var(--ok)'; }
+      $('#progress').textContent = found.size;
+      // Sonidito (WebAudio) al encontrar
+      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime+0.02); o.start(); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.25); o.stop(ctx.currentTime+0.26);}catch(_){}
+      if(found.size===MARKERS.length){
         stopTimer();
-        $('#finalTime').textContent=$('#timer').textContent;
+        $('#finalTime').textContent = $('#timer').textContent;
         $('#final').classList.add('show');
-        try{localStorage.setItem('sacre_ar_last',JSON.stringify({done:true,time:$('#timer').textContent,at:new Date().toISOString()}));}catch(_){}
       }
     }
 
-    // ====== Utils cámara ======
+    // ===== Cámara =====
+    let chosenDeviceId = null;
     async function listCameras(){
-      try{
-        await navigator.mediaDevices.getUserMedia({video:true}); // para poder obtener labels
-      }catch(_){}
+      try{ await navigator.mediaDevices.getUserMedia({video:true}); } catch(_){}
       const devs = await navigator.mediaDevices.enumerateDevices();
       const cams = devs.filter(d=>d.kind==='videoinput');
       const sel = $('#camSel'); sel.innerHTML='';
-      // Intentar trasera primero por label
-      const backFirst = [...cams].sort((a,b)=>{
-        const ab = /back|rear|environment/i.test(a.label) ? -1 : 0;
-        const bb = /back|rear|environment/i.test(b.label) ? -1 : 0;
-        return ab-bb;
-      });
-      backFirst.forEach((c,i)=>{
-        const opt=document.createElement('option');
-        opt.value=c.deviceId;
-        opt.textContent=c.label||`Cámara ${i+1}`;
-        sel.appendChild(opt);
-      });
-      if(backFirst.length){ chosenDeviceId=backFirst[0].deviceId; sel.value=chosenDeviceId; }
-      sel.addEventListener('change',e=>{ chosenDeviceId=e.target.value; });
-      return backFirst;
+      // Ordenar priorizando trasera por etiqueta
+      cams.sort((a,b)=> (/(back|rear|environment)/i.test(a.label)?-1:0) - (/(back|rear|environment)/i.test(b.label)?-1:0));
+      cams.forEach((c,i)=>{ const opt=document.createElement('option'); opt.value=c.deviceId; opt.textContent=c.label || `Cámara ${i+1}`; sel.appendChild(opt); });
+      if(cams.length){ chosenDeviceId = cams[0].deviceId; sel.value = chosenDeviceId; }
+      sel.addEventListener('change', e => chosenDeviceId = e.target.value);
+      return cams.length>0;
     }
 
-    // Verifica que el stream entrega frames (evita “fondo negro” por stream sin datos)
-    async function probeCamera(deviceId){
-      const pv = $('#probeVideo');
-      const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }, audio:false };
-      let stream;
-      try{
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      }catch(err){
-        diag('No fue posible abrir la cámara seleccionada. Intento con frontal…');
-        // fallback a frontal
-        try{
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio:false });
-        }catch(err2){
-          throw err2;
-        }
-      }
-      pv.srcObject = stream;
-      pv.play().catch(()=>{});
-      // Esperar a que cargue metadatos y haya tamaño > 0
-      await new Promise((res,rej)=>{
-        let done=false;
-        const to=setTimeout(()=>{ if(!done) rej(new Error('timeout-video')); }, 4000);
-        pv.onloadedmetadata=()=>{ if(done) return; done=true; clearTimeout(to); res(); };
-      });
-      if (!pv.videoWidth || !pv.videoHeight){ throw new Error('video-without-frames'); }
-      // Ocultar el video de prueba (destapalo si querés ver el feed crudo)
-      pv.style.display='none'; 
-      // Parar tracks (AR.js abrirá su propio stream)
-      stream.getTracks().forEach(t=>t.stop());
-      return true;
+    async function probe(deviceId){
+      // Abrimos un stream breve solo para validar que haya frames
+      const constraints = deviceId ? { video: { deviceId: { exact: deviceId } }, audio:false }
+                                   : { video: { facingMode: { ideal: 'environment' } }, audio:false };
+      const s = await navigator.mediaDevices.getUserMedia(constraints);
+      // Chequear que entregue video (onloadedmetadata)
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.autoplay = true;
+      v.srcObject = s; await v.play().catch(()=>{});
+      await new Promise((res,rej)=>{ let done=false; const to=setTimeout(()=>!done&&rej(new Error('timeout video')),3500); v.onloadedmetadata=()=>{ if(done) return; done=true; clearTimeout(to); res(); }; });
+      const ok = v.videoWidth>0 && v.videoHeight>0;
+      s.getTracks().forEach(t=>t.stop());
+      if(!ok) throw new Error('video sin frames');
     }
 
-    // ====== Construir escena AR sólo si la cámara es válida ======
-    function buildScene(){
-      if(sceneBuilt) return; sceneBuilt=true;
-      sceneEl = document.createElement('a-scene');
-      sceneEl.setAttribute('id','scene');
-      // alpha:false evita transparencia total negra en algunos móviles
-      sceneEl.setAttribute('renderer','antialias:true; alpha:false; precision:mediump; powerPreference:high-performance');
-      sceneEl.setAttribute('embedded','');
+    // ===== AR Scene =====
+    function buildScene({ facingMode='environment', deviceId=null }={}){
+      // Limpieza previa si hubiera
+      const old = document.getElementById('scene');
+      if(old){ old.parentNode.removeChild(old); }
 
-      // Config AR.js: fijamos tamaños comunes 1280x720 para móviles y detection mono+matrix
-      // facingMode environment ayuda, pero ya probamos la cámara antes
-      sceneEl.setAttribute('arjs','trackingMethod: best; sourceType: webcam; facingMode: environment; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth:1280; sourceHeight:720; displayWidth:1280; displayHeight:720; debugUIEnabled:false');
+      const scene = document.createElement('a-scene');
+      scene.setAttribute('id','scene');
+      scene.setAttribute('embedded','');
+      scene.setAttribute('renderer','antialias:true; alpha:false; precision:mediump; powerPreference:high-performance');
 
-      sceneEl.innerHTML = `
+      // AR.js config
+      // Usamos sourceType:webcam, detection mono + matrix (para barcode), y resoluciones típicas móviles
+      const base = `trackingMethod: best; sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth:1280; sourceHeight:720; displayWidth:1280; displayHeight:720; debugUIEnabled:false`;
+      // facingMode preferido; si hay deviceId lo dejamos a AR.js (usará el actual por permisos)
+      scene.setAttribute('arjs', `${base}; ${deviceId ? '' : ('facingMode:'+facingMode+';')}`);
+
+      // 3 marcadores con pistas distintas
+      scene.innerHTML = `
         <a-marker id="m-hiro" preset="hiro" emitevents="true">
-          <a-box color="#f97316" depth="0.3" height="0.3" width="0.3" position="0 0.3 0"></a-box>
-          <a-text value="Pista 1" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
+          <a-box color="#fb923c" depth="0.3" height="0.3" width="0.3" position="0 0.3 0"></a-box>
+          <a-text value="Pista 1: Portón principal" color="#fff" position="0 0.75 0" scale="0.45 0.45 0.45" align="center"></a-text>
         </a-marker>
+
         <a-marker id="m-kanji" preset="kanji" emitevents="true">
-          <a-sphere color="#3b82f6" radius="0.2" position="0 0.3 0"></a-sphere>
-          <a-text value="Pista 2" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
+          <a-sphere color="#60a5fa" radius="0.22" position="0 0.28 0"></a-sphere>
+          <a-text value="Pista 2: Patio interior" color="#fff" position="0 0.75 0" scale="0.45 0.45 0.45" align="center"></a-text>
         </a-marker>
-        <a-marker id="m-bar5" type="barcode" value="5" emitevents="true">
-          <a-cone color="#22c55e" position="0 0.3 0" radius-bottom="0.2" radius-top="0.05" height="0.4"></a-cone>
-          <a-text value="Pista 3" color="#fff" position="0 0.7 0" scale="0.4 0.4 0.4" align="center"></a-text>
+
+        <a-marker id="m-bc5" type="barcode" value="5" emitevents="true">
+          <a-cone color="#22c55e" position="0 0.3 0" radius-bottom="0.22" radius-top="0.05" height="0.42"></a-cone>
+          <a-text value="Pista 3: Biblioteca" color="#fff" position="0 0.78 0" scale="0.45 0.45 0.45" align="center"></a-text>
         </a-marker>
+
+        <!-- Cámara -->
         <a-entity camera></a-entity>
       `;
 
-      // Diagnóstico útil
-      sceneEl.addEventListener('arReady', ()=>diag('AR listo.'));
-      sceneEl.addEventListener('arError', e=>diag('Error AR: '+ (e?.detail?.message||'desconocido')));
-      sceneEl.addEventListener('camera-init', ()=>diag('Cámara inicializada por AR.js.'));
-      sceneEl.addEventListener('camera-error', e=>diag('AR.js no pudo abrir la cámara (revisá permisos/HTTPS).'));
+      // Eventos AR útiles
+      scene.addEventListener('arReady', ()=>log('AR listo'));
+      scene.addEventListener('arError', e=>log('AR error: '+(e?.detail?.message||'desconocido')));
+      scene.addEventListener('camera-init', ()=>log('Cámara inicializada por AR.js'));
+      scene.addEventListener('camera-error', ()=>log('AR.js no pudo abrir la cámara'));
 
-      sceneEl.addEventListener('loaded', ()=>{
-        for(const id of markers){
-          const el=document.getElementById(id);
-          if(el) el.addEventListener('markerFound', ()=>onFound(id));
-        }
+      scene.addEventListener('loaded', ()=>{
+        // Conectar detección de marcadores
+        const bind = (id, key) => {
+          const el = document.getElementById(id);
+          if(!el) return;
+          el.addEventListener('markerFound', ()=>markFound(key));
+        };
+        bind('m-hiro','hiro');
+        bind('m-kanji','kanji');
+        bind('m-bc5','bc5');
       });
 
-      document.body.appendChild(sceneEl);
+      document.body.appendChild(scene);
 
-      function safeResize(){ try{ sceneEl && sceneEl.resize && sceneEl.resize(); }catch(_){ } }
-      window.addEventListener('resize', ()=>setTimeout(safeResize,200));
-      window.addEventListener('orientationchange', ()=>setTimeout(safeResize,300));
+      // Resize estable
+      function safeResize(){ try{ scene && scene.resize && scene.resize(); } catch(_){ } }
+      window.addEventListener('resize', ()=>setTimeout(safeResize,180));
+      window.addEventListener('orientationchange', ()=>setTimeout(safeResize,260));
     }
 
-    // ====== Flujo principal ======
+    // ===== Flujo de arranque =====
     async function init(){
+      // Contexto seguro recomendado
       const secure = location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1';
-      if(!secure){
-        $('#gateMsg').innerHTML = 'Para usar la cámara en móviles, abrí esta página con <b>HTTPS</b> o desde <b>localhost</b>.';
-      }
+      if(!secure) log('Sugerencia: usá HTTPS/localhost para evitar bloqueos de cámara.');
       await listCameras();
     }
 
-    $('#btnStart').addEventListener('click', async (e)=>{
-      const btn=e.currentTarget;
-      btn.disabled=true; btn.textContent='Comprobando cámara…';
-      diag('Abriendo stream de prueba…');
+    $('#btnStart').addEventListener('click', async ()=>{
+      const btn = $('#btnStart');
+      btn.disabled = true; btn.textContent = 'Chequeando cámara…';
       try{
-        await probeCamera(chosenDeviceId);
-        diag('OK cámara. Inicializando AR…');
-        $('#gate').style.display='none';
-        buildScene();
+        // Probar dispositivo elegido (si no hay, usar facingMode environment)
+        if(chosenDeviceId){ await probe(chosenDeviceId); }
+        else { await probe(null); }
+
+        // Ocultar gate y construir escena (preferir environment; con deviceId también funciona)
+        $('#gate').style.display = 'none';
+        buildScene({ facingMode:'environment', deviceId: chosenDeviceId });
+
       }catch(err){
         console.error(err);
-        btn.disabled=false; btn.textContent='Activar cámara';
-        diag('No se pudo abrir un stream de video utilizable. Revisá permisos/HTTPS o probá otra cámara.');
+        log('No se pudo abrir vídeo utilizable. Probá otra cámara o revisá permisos.');
+        btn.disabled = false; btn.textContent = 'Empezar';
       }
     });
 
