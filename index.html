@@ -270,53 +270,23 @@
       window.addEventListener('orientationchange', () => setTimeout(safeResize, 300));
     }
 
-    // === Flujo de activación de cámara con gesto de usuario ===
-    async function ensureCameraPermission() {
-      // Recomendación: usar HTTPS o localhost
-      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      if (!isSecure) {
-        $('#loader').style.display = 'flex';
-        $('#loaderMsg').innerHTML = 'Para usar la cámara en móviles, abrí esta página con <b>HTTPS</b> o desde <b>localhost</b>.';
-        throw new Error('insecure-context');
-      }
-
-      // Solicitar permiso explícitamente con gesto de usuario
-      const constraints = { video: { facingMode: { ideal: 'environment' } } };
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        // Liberar inmediatamente; AR.js abrirá otra vez sin pedir permiso
-        stream.getTracks().forEach(t => t.stop());
-      } catch (err) {
-        $('#loader').style.display = 'flex';
-        const msg = (err && err.name) || 'Error';
-        if (msg === 'NotAllowedError') {
-          $('#loaderMsg').innerHTML = 'No diste permiso de cámara.<br>Volvé a cargar la página y aceptá el permiso.';
-        } else if (msg === 'NotFoundError' || msg === 'OverconstrainedError') {
-          $('#loaderMsg').innerHTML = 'No se encontró una cámara utilizable en este dispositivo.';
-        } else {
-          $('#loaderMsg').innerHTML = 'Ocurrió un problema al iniciar la cámara.';
-        }
-        throw err;
-      }
-    }
-
     // Botón de inicio
     $('#btnStart').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
       btn.textContent = 'Abriendo cámara…';
       $('#loader').style.display = 'flex';
-      // $('#loaderMsg').innerHTML = 'Inicializando cámara…';
-      // try {
-      //   await ensureCameraPermission();
-      //   buildScene();
-      //   btn.style.display = 'none';
-      //   $('.help .muted').style.display = 'none';
-      // } catch (err) {
-      //   console.error('Error al iniciar cámara:', err);
-      //   btn.disabled = false;
-      //   btn.textContent = 'Activar cámara';
-      // }
+      
+      $('#loaderMsg').innerHTML = 'Inicializando cámara…';
+      try {
+        buildScene();
+        btn.style.display = 'none';
+        $('.help .muted').style.display = 'none';
+      } catch (err) {
+        console.error('Error al iniciar cámara:', err);
+        btn.disabled = false;
+        btn.textContent = 'Activar cámara';
+      }
 
     });
   </script>
