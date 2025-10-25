@@ -306,17 +306,17 @@
       btn.disabled = true;
       btn.textContent = 'Abriendo cámara…';
       $('#loader').style.display = 'flex';
-      $('#loaderMsg').innerHTML = 'Inicializando cámara…';
-      try {
-        await ensureCameraPermission();
-        buildScene();
-        btn.style.display = 'none';
-        $('.help .muted').style.display = 'none';
-      } catch (err) {
-        console.error('Error al iniciar cámara:', err);
-        btn.disabled = false;
-        btn.textContent = 'Activar cámara';
-      }
+      // $('#loaderMsg').innerHTML = 'Inicializando cámara…';
+      // try {
+      //   await ensureCameraPermission();
+      //   buildScene();
+      //   btn.style.display = 'none';
+      //   $('.help .muted').style.display = 'none';
+      // } catch (err) {
+      //   console.error('Error al iniciar cámara:', err);
+      //   btn.disabled = false;
+      //   btn.textContent = 'Activar cámara';
+      // }
 
     });
   </script>
